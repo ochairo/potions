@@ -1,0 +1,33 @@
+name: ruby
+version:
+  source: "github-release:ruby/ruby"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "v[0-9]+_[0-9]+_[0-9]+"
+
+build_type: gnu_autotools
+description: "Ruby programming language"
+
+download:
+  download_url: "https://github.com/ruby/ruby/archive/refs/tags/{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--disable-install-doc --with-openssl-dir=$PREFIX"
+
+build:
+  timeout_minutes: 30
+  out_of_tree: false
+
+dependencies:
+  - openssl
+  - readline
+  - zlib

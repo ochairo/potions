@@ -1,0 +1,76 @@
+name: firefox
+version:
+  source: "url:https://www.mozilla.org/en-US/firefox/releases/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+(\.[0-9]+)?'
+build_type: custom
+description: "Mozilla Firefox web browser"
+
+download:
+  official_binary: true
+  download_url: "https://download.mozilla.org/?product=firefox-latest-ssl&os={suffix}&lang=en-US"
+  platforms:
+    darwin-x86_64:
+      suffix: "osx"
+    darwin-arm64:
+      suffix: "osx"
+    linux-amd64:
+      suffix: "linux64"
+    linux-arm64:
+      suffix: "linux64-aarch64"
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract package based on platform
+    case "$(uname -s)" in
+      Darwin*)
+        # macOS - DMG file
+        if ls Firefox*.dmg >/dev/null 2>&1; then
+          hdiutil attach Firefox*.dmg
+          echo "DMG mounted"
+        else
+          echo "Error: No DMG file found" >&2
+          ls -la
+          exit 1
+        fi
+        ;;
+      Linux*)
+        # Linux - tar archive (xz or bz2)
+        if ls *.tar.xz >/dev/null 2>&1; then
+          tar xJf *.tar.xz
+        elif ls *.tar.bz2 >/dev/null 2>&1; then
+          tar xjf *.tar.bz2
+        else
+          echo "Error: No tar archive found" >&2
+          ls -la
+          exit 1
+        fi
+        ;;
+    esac
+
+build:
+  timeout_minutes: 5
+  out_of_tree: false
+  custom_install: |
+    case "$(uname -s)" in
+      Darwin*)
+        # macOS
+        mkdir -p $PREFIX/Applications
+        cp -r "/Volumes/Firefox/Firefox.app" $PREFIX/Applications/
+        hdiutil detach "/Volumes/Firefox"
+        mkdir -p $PREFIX/bin
+        ln -sf "$PREFIX/Applications/Firefox.app/Contents/MacOS/firefox" $PREFIX/bin/firefox
+        ;;
+      Linux*)
+        # Linux
+        mkdir -p $PREFIX/lib/firefox $PREFIX/bin
+        cp -r firefox/* $PREFIX/lib/firefox/
+        ln -sf $PREFIX/lib/firefox/firefox $PREFIX/bin/firefox
+        ;;
+    esac
+
+dependencies: []

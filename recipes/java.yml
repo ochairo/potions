@@ -1,0 +1,88 @@
+name: java
+version:
+  source: "url:https://api.adoptium.net/v3/info/available_releases"
+  extract_pattern: "most_recent_lts.*[0-9]+"
+  cleanup: "s/[^0-9]//g"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+
+build_type: custom
+description: "OpenJDK Java runtime and development kit"
+
+download:
+  official_binary: true
+  download_url: "https://api.adoptium.net/v3/binary/latest/{version}/ga/{suffix}"
+  platforms:
+    darwin-x86_64:
+      suffix: "mac/x64/jdk/hotspot/normal/eclipse"
+    darwin-arm64:
+      suffix: "mac/aarch64/jdk/hotspot/normal/eclipse"
+    linux-amd64:
+      suffix: "linux/x64/jdk/hotspot/normal/eclipse"
+    linux-arm64:
+      suffix: "linux/aarch64/jdk/hotspot/normal/eclipse"
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract the downloaded tarball (named 'eclipse' by the API)
+    if [ -f eclipse ]; then
+      tar xzf eclipse || tar xjf eclipse || {
+        echo "Error: Failed to extract eclipse tarball" >&2
+        exit 1
+      }
+    else
+      echo "Error: eclipse download file not found" >&2
+      ls -la >&2
+      exit 1
+    fi
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX
+    # Find JDK directory (could be jdk-*, jdk*, or other patterns)
+    JDK_DIR=$(find . -maxdepth 1 -type d -name 'jdk*' ! -name '.' 2>/dev/null | head -1)
+
+    if [ -z "$JDK_DIR" ] || [ ! -d "$JDK_DIR" ]; then
+      echo "Error: No jdk* directory found" >&2
+      echo "Current directory contents:" >&2
+      ls -la >&2
+      exit 1
+    fi
+
+    # macOS JDK is packaged as .app bundle with Contents/Home structure
+    # Linux JDK is flat directory structure
+    if [ -d "$JDK_DIR/Contents/Home" ]; then
+      # macOS structure: jdk-*/Contents/Home/{bin,lib,...}
+      JAVA_HOME="$JDK_DIR/Contents/Home"
+    else
+      # Linux structure: jdk-*/{bin,lib,...}
+      JAVA_HOME="$JDK_DIR"
+    fi
+
+    # Verify JDK has java binary
+    if [ ! -f "$JAVA_HOME/bin/java" ]; then
+      echo "Error: No java binary found in $JAVA_HOME/bin/" >&2
+      echo "Contents of $JDK_DIR:" >&2
+      ls -laR "$JDK_DIR" | head -50 >&2
+      exit 1
+    fi
+
+    # Copy JDK contents to prefix
+    cp -r "$JAVA_HOME"/* $PREFIX/ || {
+      echo "Error: Failed to copy JDK files from $JAVA_HOME" >&2
+      exit 1
+    }
+
+    # Verify installation
+    if [ ! -f "$PREFIX/bin/java" ]; then
+      echo "Error: java binary not found after installation" >&2
+      exit 1
+    fi
+
+dependencies: []

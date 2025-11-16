@@ -1,0 +1,47 @@
+name: java
+version:
+  source: "url:https://api.adoptium.net/v3/info/available_releases"
+  extract_pattern: "most_recent_lts.*[0-9]+"
+  cleanup: "s/[^0-9]//g"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+
+build_type: custom
+description: "OpenJDK Java runtime and development kit"
+
+download:
+  official_binary: true
+  download_url: "https://api.adoptium.net/v3/binary/latest/{version}/ga/{suffix}"
+  platforms:
+    darwin-x86_64:
+      suffix: "mac/x64/jdk/hotspot/normal/eclipse"
+    darwin-arm64:
+      suffix: "mac/aarch64/jdk/hotspot/normal/eclipse"
+    linux-amd64:
+      suffix: "linux/x64/jdk/hotspot/normal/eclipse"
+    linux-arm64:
+      suffix: "linux/aarch64/jdk/hotspot/normal/eclipse"
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract tarball
+    true
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX
+    if [ -d jdk-* ]; then
+      # Use find to copy contents without copying directory into itself
+      cd jdk-* && find . -mindepth 1 -maxdepth 1 -exec cp -r {} $PREFIX/ \;
+    else
+      echo "Error: No jdk-* directory found"
+      exit 1
+    fi
+
+dependencies: []

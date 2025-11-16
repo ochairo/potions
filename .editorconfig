@@ -1,0 +1,55 @@
+root = true
+
+############################################################
+# Repository-wide defaults
+############################################################
+[ * ]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 120
+
+############################################################
+# Shell scripts (sh/bash/zsh)
+############################################################
+[*.sh]
+indent_style = space
+indent_size = 2
+
+[*.bash]
+indent_style = space
+indent_size = 2
+
+[*.zsh]
+indent_style = space
+indent_size = 2
+
+############################################################
+# JSON / JSONC / YAML / TOML / INI / XML and other config
+############################################################
+[*.json]
+indent_style = space
+indent_size = 2
+
+[*.jsonc]
+indent_style = space
+indent_size = 2
+
+[*.yml]
+indent_style = space
+indent_size = 2
+
+[*.yaml]
+indent_style = space
+indent_size = 2
+
+############################################################
+# Markdown and text files
+############################################################
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = 100
+
+[README.md]
+trim_trailing_whitespace = false

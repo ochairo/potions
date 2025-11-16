@@ -1,0 +1,366 @@
+name: "_Scheduled Release - Detect Package Updates"
+
+on:
+  workflow_call:
+    inputs:
+      package:
+        description: "Package to build and release (leave empty for all monitored packages)"
+        required: false
+        type: string
+      version:
+        description: "Specific version to build (leave empty for latest)"
+        required: false
+        type: string
+      max_updates:
+        description: "Maximum number of packages to release"
+        required: false
+        type: string
+        default: "1"
+    outputs:
+      packages:
+        description: "JSON array of packages with updates"
+        value: ${{ jobs.detect-updates.outputs.packages }}
+      batches:
+        description: "JSON array of batches for matrix strategy"
+        value: ${{ jobs.detect-updates.outputs.batches }}
+      has-updates:
+        description: "Boolean indicating if there are any updates"
+        value: ${{ jobs.detect-updates.outputs.has-updates }}
+    secrets:
+      GH_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  detect-updates:
+    name: Detect Package Updates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GO_VERSION: "1.24"
+    outputs:
+      packages: ${{ steps.monitor.outputs.packages }}
+      batches: ${{ steps.split-packages.outputs.batches }}
+      has-updates: ${{ steps.split-packages.outputs.has-updates }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false # Disabled - job only builds CLI once, prevents cleanup warnings
+
+      - name: Build potions CLI
+        run: |
+          go build -v -o bin/potions ./cmd/potions
+          chmod +x bin/potions
+
+      - name: Install yq for YAML parsing
+        run: |
+          YQ_VERSION="v4.40.5"
+          sudo wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Get recently failed packages
+        id: get-failed-packages
+        run: |
+          # Query last 100 workflow runs to find recently failed packages
+          # This prevents repeatedly trying to build packages that are currently failing
+          # Only checks last 3 days of failures
+
+          echo "🔍 Checking recent workflow failures (last 3 days)..."
+
+          FAILED_PACKAGES="[]"
+
+          # Get recent workflow runs (last 100) but filter to last 3 days
+          CUTOFF_DATE=$(date -u -d "3 days ago" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-3d +%Y-%m-%dT%H:%M:%SZ)
+
+          gh run list \
+            --workflow "scheduled-release.yml" \
+            --limit 100 \
+            --json conclusion,databaseId,displayTitle,createdAt \
+            --jq ".[] | select(.createdAt > \"$CUTOFF_DATE\" and .conclusion == \"failure\") | {id: .databaseId, title: .displayTitle}" \
+            > recent_failures.json || echo "[]" > recent_failures.json
+
+          # Extract package names from failure titles (e.g., "Release curl" -> "curl")
+          if [ -s recent_failures.json ]; then
+            FAILED_PACKAGES=$(cat recent_failures.json | jq -r '.title' | \
+              sed -n 's/^Release \([a-zA-Z0-9_-]*\)$/\1/p' | \
+              sort -u | \
+              jq -R . | jq -s -c .)
+
+            FAILED_COUNT=$(echo "$FAILED_PACKAGES" | jq 'length')
+            if [ "$FAILED_COUNT" -gt 0 ]; then
+              echo "⚠️  Found $FAILED_COUNT recently failed packages (last 3 days):"
+              echo "$FAILED_PACKAGES" | jq -r '.[] | "  - \(.)"'
+            else
+              echo "✅ No recently failed packages found in last 3 days"
+            fi
+          else
+            echo "✅ No recent workflow failures"
+          fi
+
+          {
+            echo "failed_packages<<EOF"
+            echo "$FAILED_PACKAGES"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Monitor for updates
+        id: monitor
+        run: |
+          PACKAGE_INPUT="${{ inputs.package }}"
+          VERSION_INPUT="${{ inputs.version }}"
+          FAILED_PACKAGES='${{ steps.get-failed-packages.outputs.failed_packages }}'
+
+          if [ -n "$PACKAGE_INPUT" ] && [ "$PACKAGE_INPUT" != "" ]; then
+            # Manual trigger with specific package
+            # Validate package exists
+            if [ ! -f "recipes/${PACKAGE_INPUT}.yml" ]; then
+              echo "❌ Error: Package definition not found for '$PACKAGE_INPUT'"
+              echo "packages=[]" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+
+            # Get version - use input version if provided, otherwise get latest
+            if [ -n "$VERSION_INPUT" ] && [ "$VERSION_INPUT" != "" ]; then
+              VERSION="$VERSION_INPUT"
+              echo "📦 Manual run: building $PACKAGE_INPUT v$VERSION (user-specified version)"
+            else
+              # Get latest version from monitor
+              export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+              VERSION=$(./bin/potions monitor --json=true "$PACKAGE_INPUT" | jq -r '.[0].latest_version')
+              unset GITHUB_TOKEN
+
+              if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+                echo "❌ Error: Could not determine version for '$PACKAGE_INPUT'"
+                echo "packages=[]" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+
+              echo "📦 Manual run: building $PACKAGE_INPUT v$VERSION (latest)"
+            fi
+
+            # Extract supported platforms from recipe file
+            RECIPE_PLATFORMS=$(yq eval '.download.platforms | keys' "recipes/${PACKAGE_INPUT}.yml" 2>/dev/null | grep -v '^$' | sed 's/^- //' | tr '\n' ' ' || echo "")
+
+            # Normalize platform names: darwin->macos, amd64->x86_64
+            NORMALIZED_PLATFORMS="[]"
+            for platform in $RECIPE_PLATFORMS; do
+              NORM_PLATFORM=$(echo "$platform" | sed 's/darwin/macos/g' | sed 's/amd64/x86_64/g')
+              NORMALIZED_PLATFORMS=$(echo "$NORMALIZED_PLATFORMS" | jq -c ". += [\"$NORM_PLATFORM\"]")
+            done
+
+            # Deduplicate platforms
+            NORMALIZED_PLATFORMS=$(echo "$NORMALIZED_PLATFORMS" | jq -c 'unique')
+
+            # If no platforms found, default to all 4
+            if [ "$NORMALIZED_PLATFORMS" = "[]" ]; then
+              NORMALIZED_PLATFORMS='["linux-x86_64","linux-arm64","macos-x86_64","macos-arm64"]'
+            fi
+
+            echo "📦 Platforms: $(echo $NORMALIZED_PLATFORMS | jq -r 'join(", ")')"
+
+            # Output as object array with platforms
+            PACKAGES=$(jq -n --arg pkg "$PACKAGE_INPUT" --arg ver "$VERSION" --argjson plat "$NORMALIZED_PLATFORMS" '[{package: $pkg, version: $ver, platforms: $plat}]')
+            {
+              echo "packages<<EOF"
+              echo "$PACKAGES"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            # Scheduled or manual without package: discover all packages from definitions
+            echo "🔍 Discovering packages from definitions directory..."
+
+            # Get all package names from recipes/*.yml files
+            MONITORED_PACKAGES=$(ls recipes/*.yml 2>/dev/null | xargs -n1 basename | sed 's/\.yml$//' | tr '\n' ' ' | sed 's/ $//')
+
+            if [ -z "$MONITORED_PACKAGES" ]; then
+              echo "⚠️  Warning: No package definitions found in recipes/"
+              echo "packages=[]" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            echo "📦 Found packages: $MONITORED_PACKAGES"
+
+            # Verify GitHub token is available
+            if [ -z "${{ secrets.GITHUB_TOKEN }}" ]; then
+              echo "⚠️  Warning: GITHUB_TOKEN not available, may hit rate limits"
+            fi
+
+            # ⚠️  SMART MONITORING:
+            # 1. Check ALL packages for updates (don't skip based on limit, just skip failed ones)
+            # 2. Skip recently failed packages (they have active issues)
+            # 3. Stop after finding MAX_UPDATES to build (but still check all for next run)
+            MAX_UPDATES_TO_FIND="${{ inputs.max_updates }}"
+            MAX_UPDATES_TO_FIND=$((MAX_UPDATES_TO_FIND + 0))
+
+            export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+
+            FOUND_PACKAGES="[]"
+            UPDATES_FOUND=0
+            PACKAGES_CHECKED=0
+            PACKAGES_SKIPPED=0
+            TOTAL_PACKAGES=$(echo $MONITORED_PACKAGES | wc -w)
+
+            echo "📋 Starting package update check..."
+            echo "   Max updates to build: $MAX_UPDATES_TO_FIND"
+            echo "   Failed packages to skip: $(echo "$FAILED_PACKAGES" | jq 'length')"
+            echo ""
+
+            for pkg in $MONITORED_PACKAGES; do
+              # Skip recently failed packages (but continue checking others)
+              if echo "$FAILED_PACKAGES" | jq -e --arg pkg "$pkg" 'any(. == $pkg)' > /dev/null 2>&1; then
+                PACKAGES_SKIPPED=$(( PACKAGES_SKIPPED + 1 ))
+                echo "⏭️  [$PACKAGES_SKIPPED skipped] Skipping $pkg (recently failed)"
+                continue
+              fi
+
+              PACKAGES_CHECKED=$(( PACKAGES_CHECKED + 1 ))
+              PROCESSED=$(( PACKAGES_CHECKED + PACKAGES_SKIPPED ))
+              echo -n "[$PROCESSED/$TOTAL_PACKAGES] Checking $pkg... "
+
+              # Monitor this single package
+              set +e
+              RESULT=$(timeout 30 ./bin/potions monitor --json=true "$pkg" 2>&1)
+              MONITOR_EXIT=$?
+              set -e
+
+              if [ $MONITOR_EXIT -eq 124 ]; then
+                echo "⏱️  TIMEOUT"
+                continue
+              fi
+
+              if [ $MONITOR_EXIT -ne 0 ] || ! echo "$RESULT" | jq empty 2>/dev/null; then
+                echo "❌ ERROR"
+                continue
+              fi
+
+              # Check if this package needs update
+              NEEDS_UPDATE=$(echo "$RESULT" | jq -r '.[0].update_needed // false')
+              if [ "$NEEDS_UPDATE" = "true" ]; then
+                VERSION=$(echo "$RESULT" | jq -r '.[0].latest_version')
+
+                # Extract supported platforms from recipe file
+                RECIPE_PLATFORMS=$(yq eval '.download.platforms | keys' "recipes/${pkg}.yml" 2>/dev/null | grep -v '^$' | sed 's/^- //' | tr '\n' ' ' || echo "")
+
+                # Normalize platform names
+                NORMALIZED_PLATFORMS="[]"
+                for platform in $RECIPE_PLATFORMS; do
+                  NORM_PLATFORM=$(echo "$platform" | sed 's/darwin/macos/g' | sed 's/amd64/x86_64/g')
+                  NORMALIZED_PLATFORMS=$(echo "$NORMALIZED_PLATFORMS" | jq -c ". += [\"$NORM_PLATFORM\"]")
+                done
+
+                NORMALIZED_PLATFORMS=$(echo "$NORMALIZED_PLATFORMS" | jq -c 'unique')
+
+                if [ "$NORMALIZED_PLATFORMS" = "[]" ]; then
+                  NORMALIZED_PLATFORMS='["linux-x86_64","linux-arm64","macos-x86_64","macos-arm64"]'
+                fi
+
+                # Only add to build queue if we haven't reached the limit
+                if [ $UPDATES_FOUND -lt $MAX_UPDATES_TO_FIND ]; then
+                  echo "✅ UPDATE: v$VERSION (will build)"
+                  FOUND_PACKAGES=$(echo "$FOUND_PACKAGES" | jq -c ". += [{\"package\": \"$pkg\", \"version\": \"$VERSION\", \"platforms\": $NORMALIZED_PLATFORMS}]")
+                  UPDATES_FOUND=$(( UPDATES_FOUND + 1 ))
+
+                  # Stop checking once we've found enough updates to build
+                  if [ $UPDATES_FOUND -ge $MAX_UPDATES_TO_FIND ]; then
+                    echo "✋ Reached max updates limit ($MAX_UPDATES_TO_FIND), stopping scan"
+                    break
+                  fi
+                else
+                  echo "✅ UPDATE: v$VERSION (queued for next run)"
+                fi
+              else
+                echo "✓ UP TO DATE"
+              fi
+            done
+
+            unset GITHUB_TOKEN
+
+            echo ""
+            echo "📊 Monitoring Summary:"
+            echo "  - Total packages: $TOTAL_PACKAGES"
+            echo "  - Skipped (recently failed): $PACKAGES_SKIPPED"
+            echo "  - Checked: $PACKAGES_CHECKED packages"
+            echo "  - Updates found: $UPDATES_FOUND packages"
+            echo "  - Updates queued to build: $(echo "$FOUND_PACKAGES" | jq 'length')"
+            echo ""
+
+            PACKAGES=$(echo "$FOUND_PACKAGES" | jq -c '.')
+            {
+              echo "packages<<EOF"
+              echo "$PACKAGES"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+
+            if [ "$PACKAGES" = "[]" ] || [ -z "$PACKAGES" ]; then
+              echo "ℹ️  No updates found in checked packages"
+            else
+              echo "🔍 Packages with updates:"
+              echo "$PACKAGES" | jq -r '.[] | "  ✅ \(.package): \(.version)"'
+            fi
+          fi
+
+      - name: Split packages into batches
+        id: split-packages
+        run: |
+          PACKAGES='${{ steps.monitor.outputs.packages }}'
+
+          # Validate packages output
+          if [ -z "$PACKAGES" ] || [ "$PACKAGES" = "null" ]; then
+            echo "⚠️  Warning: packages output is empty or null"
+            echo "batches=[]" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          if [ "$PACKAGES" = "[]" ]; then
+            echo "ℹ️  No packages to batch"
+            echo "batches=[]" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Validate JSON format
+          if ! echo "$PACKAGES" | jq empty 2>/dev/null; then
+            echo "❌ Error: Invalid JSON in packages output"
+            echo "Packages value: $PACKAGES"
+            echo "batches=[]" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          PACKAGE_COUNT=$(echo "$PACKAGES" | jq -r 'length')
+
+          # Simple batching: 1 package per batch
+          # Each batch will be built on all 4 platforms
+          echo "📊 Batching Strategy:"
+          echo "  - Total packages: $PACKAGE_COUNT"
+          echo "  - Strategy: 1 package per batch"
+          echo "  - Total batches: $PACKAGE_COUNT"
+          echo "  - Total jobs (4 platforms × batches): $(( PACKAGE_COUNT * 4 ))"
+
+          # Create one batch per package
+          if [ $PACKAGE_COUNT -gt 0 ]; then
+            BATCHES="[]"
+            for i in $(seq 0 $(( PACKAGE_COUNT - 1 ))); do
+              PACKAGE=$(echo "$PACKAGES" | jq -c ".[$i:$(( i + 1 ))]")
+              BATCHES=$(echo "$BATCHES" | jq -c ". += [{\"id\": $i, \"packages\": $PACKAGE}]")
+            done
+
+            echo "batches=$BATCHES" >> $GITHUB_OUTPUT
+            echo "has-updates=true" >> $GITHUB_OUTPUT
+            echo "✅ Updates available: true"
+            echo "✅ Created $PACKAGE_COUNT batches"
+          else
+            echo "batches=[]" >> $GITHUB_OUTPUT
+            echo "has-updates=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Updates available: false"
+          fi
+
+          # Show batch details
+          echo "$BATCHES" | jq -r '.[] | "  Batch \(.id): \(.packages | length) packages"'

@@ -1,0 +1,26 @@
+name: giflib
+version:
+  source: "url:https://sourceforge.net/projects/giflib/files/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "giflib-[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "giflib-:"
+
+build_type: make
+description: "Library for reading and writing GIF images"
+
+download:
+  download_url: "https://sourceforge.net/projects/giflib/files/giflib-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 15
+
+dependencies: []

@@ -1,0 +1,47 @@
+name: tree-sitter-cli
+version:
+  source: "github-release:tree-sitter/tree-sitter"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "v[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "v:"
+
+build_type: custom
+description: "CLI tool for developing and testing Tree-sitter grammars"
+official_binary: true
+
+download:
+  download_url: "https://github.com/tree-sitter/tree-sitter/releases/download/v{version}/tree-sitter-{os}-{arch}.gz"
+  platforms:
+    darwin-x86_64:
+      os: "macos"
+      arch: "x64"
+      suffix: "gz"
+    darwin-arm64:
+      os: "macos"
+      arch: "arm64"
+      suffix: "gz"
+    linux-amd64:
+      os: "linux"
+      arch: "x64"
+      suffix: "gz"
+    linux-arm64:
+      os: "linux"
+      arch: "arm64"
+      suffix: "gz"
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: ""
+
+build:
+  timeout_minutes: 5
+  custom_build: |
+    gunzip tree-sitter-*.gz && chmod +x tree-sitter-*
+  custom_install: |
+    mkdir -p "$PREFIX/bin"
+    mv tree-sitter-* "$PREFIX/bin/tree-sitter"
+
+dependencies: []

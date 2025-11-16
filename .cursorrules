@@ -1,0 +1,472 @@
+# Potions - AI Assistant Rules
+
+You are an AI assistant helping to develop Potions, a comprehensive package management and build system that enables reproducible software distribution with security scanning, versioning, and multi-platform support written in Go.
+
+## Cardinal Rules
+
+**CRITICAL: All code must be production-ready. No placeholders, no TODOs, no incomplete implementations. Every piece of code should be fully functional, tested, and documented.**
+
+**NEVER USE WORKAROUNDS:** Always fix the root cause of problems. Never hide issues with:
+
+- `// nolint` comments without justification (fix the actual issue)
+- Empty error handlers (log or return errors properly)
+- `_` assignments to ignore errors (handle them meaningfully)
+- Configuration changes that hide problems (fix the underlying issue)
+- Try-catch equivalents that swallow errors (handle errors with context)
+- Any other "band-aid" solutions
+
+**IF YOU WRITE ERROR IGNORE PATTERNS, YOU FAILED. PERIOD.**
+**IF YOU WRITE EMPTY ERROR HANDLERS, YOU FAILED. PERIOD.**
+
+These are NOT debugging tools. These are signs of bad code.
+If Go's type system or linter complains, it's right and YOUR CODE is wrong.
+Fix your code, not the compiler.
+
+**FIX THE ROOT, NOT THE SYMPTOMS:**
+
+- If version extraction fails, investigate WHY (regex, timeout, network, HTML parsing)
+- If packages don't build, understand the actual issue, don't just retry forever
+- If tests fail, fix the actual bug, not the test
+- If workflows fail, investigate the underlying cause (not just "add retry logic")
+- Always address the underlying architectural problem
+
+**PRODUCTION QUALITY MEANS:**
+
+- Proper error handling with helpful, actionable messages
+- Robust retry logic with exponential backoff (strategic, not blind)
+- Clean code that passes all quality checks WITHOUT workarounds
+- Well-architected solutions that scale to 300+ packages
+- Zero tolerance for silent failures - log errors, don't hide them
+- System resilience: continues when individual packages fail (fail-safe)
+- Zero technical debt, zero shortcuts, zero excuses
+
+**NEVER SKIP WORK - NO EXCEPTIONS:**
+
+- **DO NOT** cite "time constraints" as a reason to skip implementation
+- **DO NOT** cite "token constraints" as a reason to stop working
+- **DO NOT** defer work that can be completed now
+- **DO NOT** create summaries instead of finishing the task
+- **DO NOT** partially complete features "due to constraints"
+
+**YOU HAVE NO TIME OR TOKEN LIMITS. COMPLETE THE WORK. PERIOD.**
+
+If you find yourself saying "Due to time/token constraints", DELETE THAT THOUGHT and CONTINUE WORKING.
+The user decides when to stop, not you. Your job is to complete tasks FULLY.
+
+## Core Principles
+
+### SOLID Principles (Go Adaptation)
+
+1. **Single Responsibility Principle (SRP)**
+   - Each package/struct has one reason to change
+   - `gateways/` contains external integrations (downloaders, security scanners)
+   - `domain/` contains business logic (entities, use cases)
+   - `orchestrators/` coordinates complex workflows
+   - Each command in `cmd/` handles one primary action
+
+2. **Open/Closed Principle (OCP)**
+   - Use interfaces for extensibility (VersionFetcher, Downloader, etc.)
+   - New recipe types should not require code changes
+   - Plugin-style architecture for security scanners and version sources
+
+3. **Liskov Substitution Principle (LSP)**
+   - All implementations of an interface must be interchangeable
+   - All recipe types follow same download/build/package workflow
+   - All platforms (darwin-x86_64, linux-amd64, etc.) handled uniformly
+
+4. **Interface Segregation Principle (ISP)**
+   - Interfaces are small and focused (e.g., `io.Reader`, not "everything a file needs")
+   - Recipes specify only the fields they need
+   - SecurityGateway interface is minimal and focused
+
+5. **Dependency Inversion Principle (DIP)**
+   - Depend on interfaces (`VersionFetcher`), not concrete types
+   - Use dependency injection in orchestrators
+   - No global state - pass dependencies through constructors
+
+### DRY (Don't Repeat Yourself)
+
+- Extract common version fetching logic to VersionFetcher
+- Shared recipe parsing in yaml package
+- Reusable script execution in ScriptExecutor
+- Single source of truth for platform configurations
+- Common error types and messages
+
+### KISS (Keep It Simple, Stupid)
+
+- Simple Go for loops over complex iterators
+- Direct HTTP calls over complex client libraries
+- YAML recipes over JSON or protobuf (human readable)
+- Straightforward shell scripts over Go wrappers where appropriate
+- Sensible defaults, minimal configuration
+
+## Project Structure
+
+```
+potions/
+├── cmd/potions/              # CLI commands (build, monitor, release, etc.)
+│   ├── cmd_*.go             # Each command is a separate file
+│   └── main.go              # Command dispatcher
+├── internal/
+│   ├── domain/              # Business logic (ZERO external dependencies)
+│   │   ├── entities/        # Recipe, Artifact, SecurityReport, etc.
+│   │   ├── interfaces/      # Contracts (repositories, gateways)
+│   │   ├── services/        # Business rules (SecurityService, etc.)
+│   │   ├── orchestrators/   # Workflows (BuildOrchestrator, etc.)
+│   │   └── domain-adapters/ # Implementation of domain interfaces
+│   ├── domain-adapters/     # External integrations (gateways)
+│   │   └── gateways/        # VersionFetcher, Downloader, SecurityGateway, etc.
+│   ├── external-adapters/   # Format parsers (YAML, JSON, etc.)
+│   │   └── yaml/            # YAML recipe parsing
+│   └── domain-orchestrators/# Orchestrators (build, security, etc.)
+├── recipes/                 # Package definitions (*.yml)
+├── test/                    # Integration tests
+├── docs/                    # Documentation
+├── .github/workflows/       # GitHub Actions
+│   └── *_scheduled-*.yml   # Release workflows
+├── go.mod                   # Go module definition
+└── go.sum                   # Dependency checksums
+```
+
+**Key Rules:**
+
+- All production code in `internal/` (not importable from outside)
+- Commands in `cmd/potions/` are thin wrappers around orchestrators
+- Business logic is in `domain/` with ZERO external dependencies
+- Gateways in `domain-adapters/` handle all external interactions
+- Tests live alongside code with `*_test.go` suffix
+- Recipes are YAML files in `recipes/` directory (one per package)
+
+## Go Requirements
+
+- **Go 1.24+** (latest stable)
+- **Strict error handling:** Every error return checked or explicitly ignored with comment
+- **Context usage:** All long-running operations accept `context.Context`
+- **Interface-based design:** Depend on interfaces, not concrete types
+- **Meaningful variable names:** No single letters except loop counters and standard exceptions
+- **Proper logging:** Use `fmt.Fprintf(os.Stderr, ...)` for diagnostics
+- **Zero global state:** All state passed through function parameters or structs
+
+## Code Patterns to Follow
+
+### Error Handling (Go Style)
+
+```go
+// ✅ Good: Contextual error handling
+if err != nil {
+    return fmt.Errorf("failed to fetch version for %s: %w", pkgName, err)
+}
+
+// ✅ Good: Explicit ignore with comment
+_ = file.Close() // Best effort close, already handling write error above
+
+// ❌ Bad: Silent errors
+err = someOperation() // WRONG - error ignored
+
+// ❌ Bad: Generic errors
+return errors.New("failed")
+
+// ❌ Bad: Empty error handlers
+if err != nil {
+    // nolint: errcheck
+}
+```
+
+### Interfaces for Extensibility (OCP)
+
+```go
+// ✅ Good: Extensible via interfaces
+type VersionFetcher interface {
+    FetchLatestVersion(def *entities.Recipe) (string, error)
+}
+
+type BuildOrchestrator struct {
+    versionFetcher VersionFetcher
+}
+
+// Later: can swap implementations without changing BuildOrchestrator
+
+// ❌ Bad: Concrete dependency
+type BuildOrchestrator struct {
+    gitHubAPI *GitHubClient
+}
+```
+
+### Retry Logic (Don't Hide Failures)
+
+```go
+// ✅ Good: Documented retry with backoff
+func (d *Downloader) doWithRetry(req *http.Request) (*http.Response, error) {
+    var resp *http.Response
+    var err error
+
+    for attempt := 0; attempt <= maxRetries; attempt++ {
+        if attempt > 0 {
+            backoff := calculateBackoff(attempt - 1)
+            time.Sleep(backoff)
+        }
+
+        resp, err = d.httpClient.Do(req)
+        if err == nil && resp.StatusCode == http.StatusOK {
+            return resp, nil
+        }
+        // Continue retrying on network errors or specific status codes
+    }
+
+    return nil, fmt.Errorf("failed after %d attempts: %w", maxRetries+1, err)
+}
+
+// ❌ Bad: Infinite retries or giving up silently
+func download(url string) ([]byte, error) {
+    for {
+        resp, err := http.Get(url)
+        if err == nil {
+            return io.ReadAll(resp.Body)
+        }
+        // No timeout, no logging - will hang or fail silently
+    }
+}
+```
+
+### Platform Filtering (Smart, Not Brittle)
+
+```go
+// ✅ Good: Explicit platform support per package
+type Recipe struct {
+    Download RecipeDownload
+}
+
+type RecipeDownload struct {
+    Platforms map[string]PlatformConfig // darwin-x86_64, linux-amd64, etc.
+}
+
+// Filter at build time
+supportedPlatforms := recipe.Download.Platforms
+
+// ❌ Bad: Implicit assumptions
+type Recipe struct {
+    BuildOnAll bool // What does this mean? Which platforms?
+    SkipPlatforms string // "macos"? "darwin"? "mac"?
+}
+```
+
+## What to Avoid
+
+- **Global state:** No global variables for configuration or clients
+- **Silent failures:** Always log or return errors
+- **Infinite loops:** Always have exit conditions and timeouts
+- **Tight coupling:** Depend on interfaces, not concrete types
+- **Deep nesting:** Keep code flat (max 2-3 levels usually)
+- **Magic numbers:** Use named constants
+- **Unchecked errors:** Every error return must be handled
+- **Panics in libraries:** Return errors instead
+- **Side effects in init():** Initialization should be explicit
+- **Circular dependencies:** Use interfaces to break cycles
+- **Large functions:** Keep under 50 lines when possible
+- **Unvalidated user input:** Always validate and sanitize
+
+## File Naming Conventions
+
+- `snake_case.go` for files
+- `PascalCase` for types/structs
+- `camelCase` for functions/variables
+- `SCREAMING_SNAKE_CASE` for constants
+- Prefix private/internal with lowercase letter
+- `*_test.go` for test files alongside production code
+
+## Testing Requirements
+
+- **Test behavior, not implementation:** Tests should survive refactoring
+- **Meaningful coverage:** Focus on critical paths, edge cases, error handling
+- **Test-Driven Development:** Write tests BEFORE implementation when possible
+- **Table-driven tests:** Use for multiple test cases
+- **No flaky tests:** Deterministic, no random timing
+- **Clear assertions:** One assertion per test when possible
+- **Helpful error messages:** Use `t.Errorf()` with context
+
+```go
+// ✅ Good: Table-driven, focused tests
+func TestVersionFetcher_ExtractVersion(t *testing.T) {
+    vf := NewVersionFetcher()
+
+    tests := []struct {
+        name    string
+        input   string
+        pattern string
+        want    string
+        wantErr bool
+    }{
+        {
+            name:    "extract semantic version",
+            input:   "Current version: 1.28.3",
+            pattern: `[0-9]+\.[0-9]+\.[0-9]+`,
+            want:    "1.28.3",
+            wantErr: false,
+        },
+        {
+            name:    "no match returns error",
+            input:   "Version unknown",
+            pattern: `[0-9]+\.[0-9]+\.[0-9]+`,
+            want:    "",
+            wantErr: true,
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got, err := vf.extractVersion(tt.input, tt.pattern)
+            if (err != nil) != tt.wantErr {
+                t.Errorf("extractVersion() error = %v, wantErr %v", err, tt.wantErr)
+                return
+            }
+            if got != tt.want {
+                t.Errorf("extractVersion() = %v, want %v", got, tt.want)
+            }
+        })
+    }
+}
+
+// ❌ Bad: Unstructured, unclear
+func TestExtract(t *testing.T) {
+    v := NewVersionFetcher()
+    r, e := v.extractVersion("1.28.3", `\d+\.\d+\.\d+`)
+    if e != nil || r != "1.28.3" {
+        t.Fail()
+    }
+}
+```
+
+## Documentation Standards
+
+- **Comments for exported items:** Every exported type, function, constant
+- **Explain WHY, not WHAT:** Code shows WHAT, comments explain WHY
+- **Examples in comments:** Show common usage patterns
+- **Keep current:** Update comments when code changes
+
+```go
+// ✅ Good: Explains purpose and behavior
+// VersionFetcher handles fetching latest versions from various sources.
+// It supports GitHub releases, GitHub tags, plain URLs, and static versions.
+// All operations are retried with exponential backoff for reliability.
+type VersionFetcher struct {
+    httpClient *http.Client
+}
+
+// FetchLatestVersion fetches the latest version based on the version.source field.
+// It automatically filters pre-releases unless configured otherwise.
+//
+// Example:
+//   def := &Recipe{
+//       Version: VersionConfig{
+//           Source: "github-release:kubernetes/kubernetes",
+//           ExtractPattern: `v([0-9]+\.[0-9]+\.[0-9]+)`,
+//       },
+//   }
+//   version, err := vf.FetchLatestVersion(def)
+func (vf *VersionFetcher) FetchLatestVersion(def *entities.Recipe) (string, error) {
+    // ...
+}
+
+// ❌ Bad: Obvious from code
+// Gets the version
+func GetVersion() string {
+    return "1.0.0"
+}
+```
+
+## Performance Guidelines
+
+- **Timeout operations:** All HTTP requests, version fetches, builds have timeouts
+- **Batch updates:** Collect multiple packages before batch operations
+- **Streaming where possible:** Don't load entire files into memory
+- **Resource cleanup:** Close files, connections explicitly
+- **Monitor resource usage:** Watch for memory leaks, goroutine leaks
+- **Early stopping:** In update detection, stop after finding enough updates
+
+## Before Writing Code
+
+1. Read existing domain code to understand architecture
+2. Check if interfaces exist for what you need to implement
+3. Ensure SOLID compliance (especially DIP)
+4. Ask: "Can I use existing code?" (DRY)
+5. Ask: "Can I use an interface?" (OCP)
+6. Understand error cases before writing success path
+
+## While Writing Code
+
+**ERROR HANDLING FIRST:**
+
+1. What can go wrong? Network? Timeouts? Invalid input?
+2. How will I handle each error? Log it? Retry? Return it?
+3. What message will help the user understand what happened?
+4. **ONLY THEN** write the happy path
+
+**ALWAYS:**
+
+1. Handle every error return (no `_` assignments)
+2. Use interfaces, not concrete types
+3. Write tests as you write code (TDD)
+4. Keep functions small (< 50 lines)
+5. Use context for cancellation and timeouts
+6. Log important operations for debugging
+
+## After Writing Code
+
+1. Run all tests: `go test ./...`
+2. Run linter: `golangci-lint run ./internal/...`
+3. Check for coverage gaps in error paths
+4. Review for SOLID compliance
+5. Verify error messages are helpful
+6. Check for resource leaks (goroutines, files, connections)
+7. Ensure timeouts on all I/O operations
+
+## Code Review Checklist
+
+**CRITICAL CHECKS (AUTO-FAIL IF ANY VIOLATED):**
+
+- [ ] **No unchecked error returns** - Every error from function call is handled
+- [ ] **No empty error handlers** - No `if err != nil { }` without at least logging
+- [ ] **No `_` error ignores** - Errors are explicitly handled or comments explain why
+- [ ] **No generic errors** - `fmt.Errorf()` wraps errors with context and uses `%w`
+- [ ] **No TODOs or placeholders** - Code is complete and ready for production
+- [ ] **No workarounds** - Every problem fixed at root cause
+- [ ] **No unsafe assumptions** - Platform support explicit, not implicit
+
+**QUALITY CHECKS:**
+
+- [ ] Follows SOLID principles
+- [ ] No code duplication (DRY) - Extract common patterns
+- [ ] Simple and clear (KISS) - No over-engineering
+- [ ] Proper error handling with helpful messages
+- [ ] Tests cover happy path, edge cases, and error cases
+- [ ] No resource leaks (goroutines, file descriptors, connections)
+- [ ] All I/O operations have timeouts
+- [ ] Comments explain WHY, not WHAT
+- [ ] Follows project structure (cmd, internal/domain, internal/domain-adapters)
+- [ ] Uses interfaces for extensibility
+- [ ] Dependency injection used, no global state
+- [ ] Retries are documented and finite
+- [ ] Platform handling is explicit and consistent
+
+**IF ANY CRITICAL CHECK FAILS: DELETE THE CODE AND START OVER**
+
+## Security Guidelines
+
+- **Never trust user input:** Validate and sanitize all input
+- **Path traversal prevention:** Use `validatePathWithinBase()` for file operations
+- **Command injection prevention:** Never shell-escape user input directly
+- **Signature verification:** Support GPG signature verification for releases
+- **Vulnerability scanning:** All binaries scanned with Syft/Grype
+- **No hardcoded secrets:** Use environment variables or configuration
+- **SBOM generation:** Create Software Bill of Materials for all builds
+
+## When in Doubt
+
+1. Check existing code for similar patterns
+2. Review SOLID/DRY/KISS principles
+3. Choose the simpler solution
+4. Ask: "What could go wrong?" (Think about errors first)
+5. Write the test first
+6. Document your assumptions
+
+**Remember: When in doubt, choose simplicity and explicitness.**

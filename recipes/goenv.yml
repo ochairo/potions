@@ -1,0 +1,51 @@
+name: goenv
+version:
+  source: "github-tag:go-nv/goenv"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "Go version manager"
+
+download:
+  official_binary: false
+  download_url: "https://github.com/go-nv/goenv/archive/refs/tags/{version}.tar.gz"
+  platforms:
+    darwin-x86_64: {}
+    darwin-arm64: {}
+    linux-amd64: {}
+    linux-arm64: {}
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 1
+  custom_install: |
+    mkdir -p "$PREFIX/bin"
+    mkdir -p "$PREFIX/share/goenv"
+
+    # Check if we're already in the extracted directory or need to cd into it
+    if [ -d "bin" ] && [ -d "libexec" ]; then
+      # Already in the right directory (extracted flat)
+      WORK_DIR="."
+    else
+      # Find goenv directory
+      GOENV_DIR=$(find . -maxdepth 1 -type d -name "goenv-*" | head -1)
+
+      if [ -z "$GOENV_DIR" ]; then
+        echo "Error: goenv directory not found and bin/libexec not in current dir" >&2
+        ls -la >&2
+        exit 1
+      fi
+
+      WORK_DIR="$GOENV_DIR"
+    fi
+
+    # Copy all goenv files to share directory
+    cp -r "$WORK_DIR"/* "$PREFIX/share/goenv/"
+
+    # Create symlink to bin
+    ln -sf "$PREFIX/share/goenv/bin/goenv" "$PREFIX/bin/goenv"
+
+dependencies: []

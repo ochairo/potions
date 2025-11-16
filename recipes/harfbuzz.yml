@@ -1,0 +1,36 @@
+name: harfbuzz
+version:
+  source: "github-release:harfbuzz/harfbuzz"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: ""
+
+build_type: custom
+description: "Text shaping library"
+
+download:
+  download_url: "https://github.com/harfbuzz/harfbuzz/releases/download/{version}/harfbuzz-{version}.tar.xz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    meson setup build --prefix="$PREFIX"
+
+build:
+  timeout_minutes: 20
+  custom_build: |
+    ninja -C build
+  custom_install: |
+    ninja -C build install
+
+dependencies:
+  - freetype
+  - glib

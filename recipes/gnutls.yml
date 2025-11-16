@@ -1,0 +1,31 @@
+name: gnutls
+version:
+  source: "url:https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "gnutls-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.xz"
+  cleanup: ""
+
+build_type: gnu_autotools
+description: "GNU Transport Layer Security library"
+
+download:
+  download_url: "https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-{version}.tar.xz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--with-included-libtasn1 --with-included-unistring --without-p11-kit"
+
+build:
+  timeout_minutes: 40
+
+dependencies:
+  - nettle
+  - gmp

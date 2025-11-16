@@ -1,0 +1,254 @@
+name: Delete release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to delete (e.g., kubectl-v1.28.0). Leave empty to delete all releases."
+        required: false
+        type: string
+      package_filter:
+        description: "Delete all releases for a specific package (e.g., kubectl). Leave empty to delete all packages."
+        required: false
+        type: string
+      confirm:
+        description: 'Type "DELETE" to confirm deletion'
+        required: true
+        type: string
+      dry_run:
+        description: "Dry run mode - show what would be deleted without actually deleting"
+        required: false
+        default: true
+        type: boolean
+
+# Top-level permissions: read-all for security
+permissions: read-all
+
+jobs:
+  validate:
+    name: Validate Deletion Request
+    runs-on: ubuntu-latest
+    outputs:
+      confirmed: ${{ steps.check.outputs.confirmed }}
+    steps:
+      - name: Check confirmation
+        id: check
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "DELETE" ]; then
+            echo "❌ Confirmation failed. You must type 'DELETE' to confirm."
+            echo "confirmed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "✅ Deletion confirmed"
+          echo "confirmed=true" >> $GITHUB_OUTPUT
+
+  delete-releases:
+    name: Delete Releases
+    needs: validate
+    if: needs.validate.outputs.confirmed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required for deleting releases
+    env:
+      GO_VERSION: "1.24"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install GitHub CLI
+        run: |
+          if ! command -v gh &> /dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y gh
+          fi
+
+      - name: List releases to delete
+        id: list
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_TAG="${{ github.event.inputs.release_tag }}"
+          PACKAGE_FILTER="${{ github.event.inputs.package_filter }}"
+
+          echo "# Deletion Plan" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -n "$RELEASE_TAG" ]; then
+            # Delete specific release
+            echo "Mode: Delete specific release" >> $GITHUB_STEP_SUMMARY
+            echo "Tag: $RELEASE_TAG" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Check if release exists
+            if gh release view "$RELEASE_TAG" &> /dev/null; then
+              echo "releases=$RELEASE_TAG" >> $GITHUB_OUTPUT
+              echo "✅ Release found: $RELEASE_TAG" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Release not found: $RELEASE_TAG" >> $GITHUB_STEP_SUMMARY
+              echo "releases=" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+
+          elif [ -n "$PACKAGE_FILTER" ]; then
+            # Delete all releases for a specific package
+            echo "Mode: Delete all releases for package" >> $GITHUB_STEP_SUMMARY
+            echo "Package: $PACKAGE_FILTER" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # List all releases matching the package filter
+            RELEASES=$(gh release list --limit 1000 --json tagName --jq '.[] | .tagName' | grep "^${PACKAGE_FILTER}-" || true)
+
+            if [ -z "$RELEASES" ]; then
+              echo "❌ No releases found for package: $PACKAGE_FILTER" >> $GITHUB_STEP_SUMMARY
+              echo "releases=" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+
+            echo "releases<<EOF" >> $GITHUB_OUTPUT
+            echo "$RELEASES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+
+            echo "## Releases to delete:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "$RELEASES" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+
+            COUNT=$(echo "$RELEASES" | wc -l)
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Total: $COUNT releases**" >> $GITHUB_STEP_SUMMARY
+
+          else
+            # Delete ALL releases
+            echo "⚠️  Mode: Delete ALL releases" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # List all releases
+            RELEASES=$(gh release list --limit 1000 --json tagName --jq '.[] | .tagName' || true)
+
+            if [ -z "$RELEASES" ]; then
+              echo "ℹ️  No releases found" >> $GITHUB_STEP_SUMMARY
+              echo "releases=" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            echo "releases<<EOF" >> $GITHUB_OUTPUT
+            echo "$RELEASES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+
+            echo "## All releases to delete:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "$RELEASES" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+
+            COUNT=$(echo "$RELEASES" | wc -l)
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Total: $COUNT releases**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Dry run - Show deletion plan
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔍 DRY RUN MODE - No releases will be deleted"
+          echo ""
+          echo "The following releases would be deleted:"
+          echo "${{ steps.list.outputs.releases }}" | while read -r tag; do
+            if [ -n "$tag" ]; then
+              echo "  - $tag"
+
+              # Show release details
+              gh release view "$tag" --json name,createdAt,assets \
+                --jq '"    Created: \(.createdAt) | Assets: \(.assets | length)"' || true
+            fi
+          done
+
+          echo ""
+          echo "To actually delete these releases:"
+          echo "  1. Re-run this workflow"
+          echo "  2. Set 'dry_run' to false"
+          echo "  3. Type 'DELETE' in the confirmation field"
+
+      - name: Delete releases
+        if: ${{ github.event.inputs.dry_run == 'false' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🗑️  Deleting releases..."
+          echo ""
+
+          DELETED=0
+          FAILED=0
+          RELEASES="${{ steps.list.outputs.releases }}"
+
+          # Use process substitution to avoid subshell issues
+          while IFS= read -r tag; do
+            if [ -n "$tag" ]; then
+              echo "Deleting: $tag"
+
+              if gh release delete "$tag" --yes --cleanup-tag 2>&1; then
+                echo "  ✅ Deleted: $tag"
+                DELETED=$((DELETED + 1))
+              else
+                echo "  ❌ Failed to delete: $tag"
+                FAILED=$((FAILED + 1))
+              fi
+            fi
+          done < <(echo "$RELEASES")
+
+          echo ""
+          echo "Summary:"
+          echo "  Deleted: $DELETED"
+          echo "  Failed: $FAILED"
+
+          # Update summary
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Deletion Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Deleted: $DELETED" >> $GITHUB_STEP_SUMMARY
+          echo "- ❌ Failed: $FAILED" >> $GITHUB_STEP_SUMMARY
+
+          # Exit with error if any deletions failed
+          if [ $FAILED -gt 0 ]; then
+            echo ""
+            echo "⚠️  Some deletions failed. Check logs above for details."
+            exit 1
+          fi
+
+  summary:
+    name: Deletion Summary
+    needs: [validate, delete-releases]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "# Delete Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Release Tag: \`${{ github.event.inputs.release_tag || 'ALL' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Package Filter: \`${{ github.event.inputs.package_filter || 'ALL' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Dry Run: ${{ github.event.inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Confirmed: ${{ github.event.inputs.confirm }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Job Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Validate: ${{ needs.validate.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Delete: ${{ needs.delete-releases.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            echo "⚠️  **DRY RUN MODE** - No releases were actually deleted" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.validate.result }}" != "success" ]; then
+            echo "❌ **FAILED** - Confirmation was not provided correctly" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.delete-releases.result }}" == "success" ]; then
+            echo "✅ **SUCCESS** - Releases deleted successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **FAILED** - Check logs for details" >> $GITHUB_STEP_SUMMARY
+          fi

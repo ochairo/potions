@@ -1,0 +1,34 @@
+name: rsync
+version:
+  source: "url:https://download.samba.org/pub/rsync/src/"
+  extract_pattern: 'rsync-([0-9]+\.[0-9]+\.[0-9]+)\.tar\.gz'
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+build_type: gnu_autotools
+description: "Utility for fast incremental file transfer"
+
+download:
+  official_binary: false
+  download_url: "https://download.samba.org/pub/rsync/src/rsync-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    ./configure --prefix="$PREFIX" \
+      --disable-dependency-tracking \
+      --disable-xxhash \
+      --disable-zstd \
+      --disable-lz4
+
+build:
+  timeout_minutes: 10
+  out_of_tree: false
+
+dependencies: []

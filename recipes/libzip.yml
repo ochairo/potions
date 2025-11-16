@@ -1,0 +1,31 @@
+name: libzip
+version:
+  source: "github-release:nih-at/libzip"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "v[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "v:"
+
+build_type: cmake
+description: "C library for reading, creating, and modifying zip archives"
+
+download:
+  download_url: "https://github.com/nih-at/libzip/releases/download/v{version}/libzip-{version}.tar.xz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: ""
+
+build:
+  timeout_minutes: 15
+
+dependencies:
+  - zlib
+  - bzip2

@@ -1,0 +1,35 @@
+name: socat
+version:
+  source: "url:http://www.dest-unreach.org/socat/download/"
+  exclude_patterns: ""
+  extract_pattern: "socat-1[.][0-9]+[.][0-9]+[.][0-9]+"
+  cleanup: "s/socat-//"
+
+build_type: gnu_autotools
+description: "Relay for bidirectional data transfer"
+
+download:
+  download_url: "http://www.dest-unreach.org/socat/download/socat-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  flags:
+    - --prefix=$PREFIX
+
+build:
+  timeout_minutes: 5
+  out_of_tree: false
+
+dependencies:
+  - make
+  - gcc
+  - openssl

@@ -1,0 +1,54 @@
+name: cmake
+version:
+  source: "github-release:Kitware/CMake"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "Cross-platform build system"
+
+download:
+  download_url: "https://github.com/Kitware/CMake/releases/download/v{version}/cmake-{version}-{os}{arch}.tar.gz"
+  platforms:
+    darwin-x86_64:
+      os: "macos"
+      arch: "-universal"
+    darwin-arm64:
+      os: "macos"
+      arch: "-universal"
+    linux-amd64:
+      os: "linux"
+      arch: "-x86_64"
+    linux-arm64:
+      os: "linux"
+      arch: "-aarch64"
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: ""
+
+build:
+  timeout_minutes: 5
+  custom_install: |
+    # Handle both macOS .app bundle and Linux direct binaries
+    if [ -d ./CMake.app/Contents ]; then
+      # macOS: CMake.app bundle
+      cp -r ./CMake.app/Contents/bin/* "$PREFIX/bin/"
+      cp -r ./CMake.app/Contents/share/* "$PREFIX/share/" 2>/dev/null || true
+    elif [ -f ./bin/cmake ]; then
+      # Linux: direct bin directory in extracted folder
+      cp -r ./bin/* "$PREFIX/bin/"
+      cp -r ./share/* "$PREFIX/share/" 2>/dev/null || true
+    elif [ -d ./cmake-*/bin ]; then
+      # Fallback: cmake in subdirectory
+      cmake_dir=$(find . -maxdepth 1 -name "cmake-*" -type d | head -1)
+      cp -r "$cmake_dir/bin/"* "$PREFIX/bin/"
+      cp -r "$cmake_dir/share/"* "$PREFIX/share/" 2>/dev/null || true
+    else
+      echo "Error: cmake binary not found in extracted directory"
+      ls -la
+      exit 1
+    fi
+
+dependencies: []

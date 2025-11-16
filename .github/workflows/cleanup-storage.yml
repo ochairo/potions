@@ -1,0 +1,151 @@
+name: Cleanup Storage
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "What to clean up"
+        required: true
+        type: choice
+        options:
+          - "All (artifacts + caches)"
+          - "Artifacts only"
+          - "Caches only"
+        default: "All (artifacts + caches)"
+      max_age_days:
+        description: "Delete items older than X days (0 = all)"
+        required: false
+        type: number
+        default: 0
+
+jobs:
+  cleanup:
+    name: Clean up GitHub storage
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write # Required for deleting artifacts and caches
+    steps:
+      - name: Delete artifacts
+        if: contains(inputs.target, 'All') || contains(inputs.target, 'Artifacts')
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
+        with:
+          script: |
+            const maxAgeDays = ${{ inputs.max_age_days }};
+            const cutoffDate = maxAgeDays > 0
+              ? new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000)
+              : null;
+
+            console.log('🧹 Deleting artifacts...');
+            if (cutoffDate) {
+              console.log(`   Only deleting artifacts older than ${maxAgeDays} days (before ${cutoffDate.toISOString()})`);
+            } else {
+              console.log('   Deleting ALL artifacts');
+            }
+
+            let page = 1;
+            let deletedCount = 0;
+            let skippedCount = 0;
+            const MAX_PAGES = 50; // Safety limit to prevent infinite loops
+
+            while (page <= MAX_PAGES) {
+              const response = await github.rest.actions.listArtifactsForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+                page: page
+              });
+
+              if (response.data.artifacts.length === 0) break;
+
+              for (const artifact of response.data.artifacts) {
+                const createdAt = new Date(artifact.created_at);
+
+                if (cutoffDate && createdAt > cutoffDate) {
+                  skippedCount++;
+                  continue;
+                }
+
+                try {
+                  await github.rest.actions.deleteArtifact({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    artifact_id: artifact.id
+                  });
+                  console.log(`  ✅ Deleted: ${artifact.name} (${artifact.size_in_bytes} bytes, created ${artifact.created_at})`);
+                  deletedCount++;
+                } catch (error) {
+                  console.log(`  ❌ Failed to delete ${artifact.name}: ${error.message}`);
+                }
+              }
+
+              page++;
+            }
+
+            console.log(`\n📊 Artifacts: ${deletedCount} deleted, ${skippedCount} skipped`);
+
+      - name: Delete caches
+        if: contains(inputs.target, 'All') || contains(inputs.target, 'Caches')
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
+        with:
+          script: |
+            const maxAgeDays = ${{ inputs.max_age_days }};
+            const cutoffDate = maxAgeDays > 0
+              ? new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000)
+              : null;
+
+            console.log('\n💾 Deleting caches...');
+            if (cutoffDate) {
+              console.log(`   Only deleting caches older than ${maxAgeDays} days (before ${cutoffDate.toISOString()})`);
+            } else {
+              console.log('   Deleting ALL caches');
+            }
+
+            let page = 1;
+            let deletedCount = 0;
+            let skippedCount = 0;
+            const MAX_PAGES = 50; // Safety limit to prevent infinite loops
+
+            while (page <= MAX_PAGES) {
+              const response = await github.rest.actions.getActionsCacheList({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+                page: page
+              });
+
+              if (response.data.actions_caches.length === 0) break;
+
+              for (const cache of response.data.actions_caches) {
+                const createdAt = new Date(cache.created_at);
+
+                if (cutoffDate && createdAt > cutoffDate) {
+                  skippedCount++;
+                  continue;
+                }
+
+                try {
+                  await github.rest.actions.deleteActionsCacheById({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    cache_id: cache.id
+                  });
+                  console.log(`  ✅ Deleted: ${cache.key} (${cache.size_in_bytes} bytes, created ${cache.created_at})`);
+                  deletedCount++;
+                } catch (error) {
+                  console.log(`  ❌ Failed to delete ${cache.key}: ${error.message}`);
+                }
+              }
+
+              page++;
+            }
+
+            console.log(`\n📊 Caches: ${deletedCount} deleted, ${skippedCount} skipped`);
+
+      - name: Summary
+        run: |
+          echo "## 🧹 Storage Cleanup Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** ${{ inputs.target }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Max age:** ${{ inputs.max_age_days }} days" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the job logs for detailed deletion information." >> $GITHUB_STEP_SUMMARY

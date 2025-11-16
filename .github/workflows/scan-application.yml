@@ -1,0 +1,299 @@
+name: Scan Application
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Concurrency control to prevent multiple runs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Top-level permissions: read-all for security
+permissions: read-all
+
+jobs:
+  dependency-submission:
+    name: Go Dependency Submission
+    runs-on: ubuntu-latest
+    if: "github.event_name == 'push' && github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'chore:')"
+    permissions:
+      contents: write
+    env:
+      GO_VERSION: "1.24"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Submit Go dependencies
+        uses: actions/go-dependency-submission@f35d5c9af13ce9cc32f7930b171e315e878f6921 # v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+  codeql:
+    name: CodeQL Security Analysis (Go)
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.event.head_commit.message, 'chore:')"
+    env:
+      GO_VERSION: "1.24"
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@fdbfb4d2750291e159f0156def62b853c2798ca2 # v4
+        with:
+          languages: go
+          queries: security-and-quality
+
+      - name: Build Go Application
+        run: |
+          go build -v ./cmd/potions
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@fdbfb4d2750291e159f0156def62b853c2798ca2 # v4
+        continue-on-error: true # Allow workflow to continue if API rate limit is hit
+        with:
+          category: go-application
+
+  secret-scanning:
+    name: Secret & Credential Scanning
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.event.head_commit.message, 'chore:')"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5
+        with:
+          fetch-depth: 0
+
+      - name: Install Gitleaks
+        run: |
+          wget https://github.com/gitleaks/gitleaks/releases/download/v8.22.1/gitleaks_8.22.1_linux_x64.tar.gz
+          tar -xzf gitleaks_8.22.1_linux_x64.tar.gz
+          sudo mv gitleaks /usr/local/bin/
+          gitleaks version
+
+      - name: Run Gitleaks Scan
+        run: gitleaks detect --source . --verbose --no-git
+
+  go-static-analysis:
+    name: Go Static Analysis
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.event.head_commit.message, 'chore:')" # Wait for CodeQL to reduce parallel API calls
+    env:
+      GO_VERSION: "1.24"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
+          staticcheck ./...
+
+      - name: Run gosec (Security Checker)
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.22.10
+          gosec -fmt=json -out=gosec-report.json ./...
+        continue-on-error: true
+
+      - name: Upload gosec Report
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        if: always()
+        with:
+          name: gosec-security-report
+          path: gosec-report.json
+          retention-days: 30
+
+  go-vulnerability-scan:
+    name: Go Vulnerability Scanning
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.event.head_commit.message, 'chore:')" # Sequential execution to reduce API load
+    env:
+      GO_VERSION: "1.24"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run govulncheck
+        run: |
+          echo "🔍 Scanning Go application for known vulnerabilities..."
+          go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+          govulncheck -json ./... > govulncheck-report.json || true
+
+          echo ""
+          echo "📊 Vulnerability Summary:"
+          govulncheck ./...
+
+      - name: List Go Dependencies
+        run: |
+          echo "📦 Go Module Dependencies:"
+          go list -m all
+
+          echo ""
+          echo "� Dependency Tree:"
+          go mod graph | head -20
+
+          # Export full dependency list
+          go list -json -m all > go-dependencies.json
+
+      - name: Upload Vulnerability Reports
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        if: always()
+        with:
+          name: go-vulnerability-reports
+          path: |
+            govulncheck-report.json
+            go-dependencies.json
+          retention-days: 30
+
+  dependency-review:
+    name: Go Dependency Review
+    runs-on: ubuntu-latest
+    env:
+      GO_VERSION: "1.24"
+    if: "github.event_name == 'pull_request' && !startsWith(github.event.head_commit.message, 'chore:')"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@3c4e3dcb1aa7874d2c16be7d79418e9b7efd6261 # v4
+        continue-on-error: true
+        with:
+          fail-on-severity: moderate
+          base-ref: ${{ github.event.pull_request.base.sha }}
+          head-ref: ${{ github.event.pull_request.head.sha }}
+
+  go-license-check:
+    name: Go License Compliance
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.event.head_commit.message, 'chore:')" # Sequential execution to reduce API load
+    env:
+      GO_VERSION: "1.24"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Check Go Module Licenses
+        run: |
+          go install github.com/google/go-licenses/v2@v2.0.1
+          go-licenses report ./cmd/potions > licenses-report.txt || true
+
+          echo "📜 License Summary:"
+          cat licenses-report.txt
+
+      - name: Upload License Report
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        if: always()
+        with:
+          name: go-license-report
+          path: licenses-report.txt
+          retention-days: 30
+
+  openssf-scorecard:
+    name: OpenSSF Security Scorecard
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.event.head_commit.message, 'chore:')"
+    permissions:
+      # Scorecard action requires these specific permissions
+      # See: https://github.com/ossf/scorecard-action#workflow-restrictions
+      security-events: write # For uploading to code-scanning
+      id-token: write # For OIDC to publish results
+      contents: read # For actions/checkout
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5
+        with:
+          persist-credentials: false
+
+      - name: Run Scorecard Analysis
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
+        continue-on-error: true # Allow workflow to continue if API rate limit is hit
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Upload SARIF Results
+        uses: github/codeql-action/upload-sarif@fdbfb4d2750291e159f0156def62b853c2798ca2 # v4
+        continue-on-error: true # Allow workflow to continue if scorecard failed
+        with:
+          sarif_file: results.sarif
+
+  summary:
+    name: Security Scan Summary
+    needs:
+      [
+        codeql,
+        secret-scanning,
+        go-static-analysis,
+        go-vulnerability-scan,
+        go-license-check,
+        openssf-scorecard,
+      ]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "# Go Application Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- CodeQL Analysis: ${{ needs.codeql.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Secret Scanning: ${{ needs.secret-scanning.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Static Analysis: ${{ needs.go-static-analysis.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Vulnerability Scan: ${{ needs.go-vulnerability-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- License Check: ${{ needs.go-license-check.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- OpenSSF Scorecard: ${{ needs.openssf-scorecard.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Security Features" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This workflow scans the **potions Go application** itself:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Go source code security (CodeQL)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Go dependencies vulnerabilities (govulncheck)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Static analysis (go vet, staticcheck, gosec)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Secret detection (Gitleaks)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ License compliance" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Repository security best practices (Scorecard)" >> $GITHUB_STEP_SUMMARY

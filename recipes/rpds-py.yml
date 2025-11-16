@@ -1,0 +1,35 @@
+name: rpds-py
+version:
+  source: "url:https://pypi.org/simple/rpds-py/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: ""
+
+build_type: custom
+description: "Python bindings to Rust's persistent data structures"
+
+download:
+  download_url: "https://files.pythonhosted.org/packages/source/r/rpds-py/rpds_py-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: ""
+
+build:
+  timeout_minutes: 20
+  custom_build: |
+    python3 -m pip wheel --no-deps -w dist .
+  custom_install: |
+    python3 -m pip install --prefix="$PREFIX" dist/*.whl
+
+dependencies:
+  - python
+  - rust

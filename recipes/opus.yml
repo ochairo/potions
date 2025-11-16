@@ -1,0 +1,29 @@
+name: opus
+version:
+  source: "url:https://downloads.xiph.org/releases/opus/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "opus-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.gz"
+  cleanup: ""
+
+build_type: gnu_autotools
+description: "Codec for interactive speech and audio transmission over the Internet"
+
+download:
+  download_url: "https://downloads.xiph.org/releases/opus/opus-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: ""
+
+build:
+  timeout_minutes: 20
+
+dependencies: []

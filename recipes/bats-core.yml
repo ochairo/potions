@@ -1,0 +1,61 @@
+name: bats-core
+version:
+  source: "github-tag:bats-core/bats-core"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'v[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: "v:"
+build_type: custom
+description: "Bash Automated Testing System"
+
+download:
+  official_binary: false
+  download_url: "https://github.com/bats-core/bats-core/archive/refs/tags/v{version}.tar.gz"
+  platforms:
+    darwin-x86_64: {}
+    darwin-arm64: {}
+    linux-amd64: {}
+    linux-arm64: {}
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 2
+  custom_install: |
+    # Check if we're already in the extracted directory or need to cd into it
+    if [ -f "install.sh" ]; then
+      # Already in the right directory (extracted flat)
+      WORK_DIR="."
+    else
+      # Find bats-core directory
+      BATS_DIR=$(find . -maxdepth 1 -type d -name "bats-core-*" | head -1)
+
+      if [ -z "$BATS_DIR" ]; then
+        echo "Error: bats-core directory not found and install.sh not in current dir" >&2
+        ls -la >&2
+        exit 1
+      fi
+
+      WORK_DIR="$BATS_DIR"
+    fi
+
+    cd "$WORK_DIR"
+
+    # Run install script
+    if [ -f "install.sh" ]; then
+      ./install.sh "$PREFIX"
+    else
+      echo "Error: install.sh not found" >&2
+      ls -la >&2
+      exit 1
+    fi
+
+    # Verify installation
+    if [ ! -f "$PREFIX/bin/bats" ]; then
+      echo "Error: bats binary not found after installation" >&2
+      ls -la "$PREFIX/bin" >&2
+      exit 1
+    fi
+
+dependencies: []

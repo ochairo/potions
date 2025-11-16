@@ -1,0 +1,37 @@
+name: glib
+version:
+  source: "url:https://download.gnome.org/sources/glib/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "([0-9]+\\.[0-9]+)/"
+  cleanup: "/:"
+
+build_type: custom
+description: "Low-level core library that forms the basis of GTK+"
+
+download:
+  download_url: "https://download.gnome.org/sources/glib/{version}/glib-{version}.tar.xz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    meson setup build --prefix="$PREFIX"
+
+build:
+  timeout_minutes: 30
+  custom_build: |
+    ninja -C build
+  custom_install: |
+    ninja -C build install
+
+dependencies:
+  - zlib
+  - libffi
+  - pcre2

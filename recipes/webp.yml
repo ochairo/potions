@@ -1,0 +1,33 @@
+name: webp
+version:
+  source: "github-release:webmproject/libwebp"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "v[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "v:"
+
+build_type: cmake
+description: "Image format providing lossless and lossy compression (tools)"
+
+download:
+  download_url: "https://github.com/webmproject/libwebp/archive/v{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "-DWEBP_BUILD_ANIM_UTILS=OFF -DWEBP_BUILD_CWEBP=ON -DWEBP_BUILD_DWEBP=ON"
+
+build:
+  timeout_minutes: 20
+
+dependencies:
+  - libwebp
+  - libjpeg-turbo
+  - libpng
+  - libtiff

@@ -1,0 +1,63 @@
+name: aws-cli
+version:
+  source: "github-tag:aws/aws-cli"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "AWS CLI - Universal Command Line Interface for Amazon Web Services"
+
+download:
+  official_binary: true
+  download_url: "https://awscli.amazonaws.com/{suffix}"
+  platforms:
+    darwin-x86_64:
+      suffix: "AWSCLIV2-{version}.pkg"
+    darwin-arm64:
+      suffix: "AWSCLIV2-{version}.pkg"
+    linux-amd64:
+      suffix: "awscli-exe-linux-x86_64-{version}.zip"
+    linux-arm64:
+      suffix: "awscli-exe-linux-aarch64-{version}.zip"
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract zip file if present (downloader doesn't handle zip)
+    if ls *.zip >/dev/null 2>&1; then
+      unzip -q *.zip
+    fi
+
+build:
+  timeout_minutes: 2
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    case "$(uname -s)" in
+      Darwin*)
+        # macOS - extract pkg contents without installing
+        # PKG files cannot be extracted easily, so we package the whole thing
+        # Users will need to run: sudo installer -pkg AWSCLIV2.pkg -target /
+        mkdir -p $PREFIX/aws-cli-pkg
+        cp AWSCLIV2-*.pkg $PREFIX/aws-cli-pkg/
+        echo "To install: sudo installer -pkg aws-cli-pkg/AWSCLIV2-*.pkg -target /" > $PREFIX/aws-cli-pkg/INSTALL.txt
+        ;;
+      *)
+        # Linux - extract aws binary from the aws directory structure
+        if [ -f "aws/dist/aws" ]; then
+          cp aws/dist/aws $PREFIX/bin/aws
+        elif [ -f "aws" ]; then
+          cp aws $PREFIX/bin/aws
+        else
+          echo "Error: aws binary not found"
+          ls -la
+          exit 1
+        fi
+        chmod +x $PREFIX/bin/aws
+        ;;
+    esac
+
+dependencies:
+  - unzip

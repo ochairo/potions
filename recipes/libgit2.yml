@@ -1,0 +1,31 @@
+name: libgit2
+version:
+  source: "github-release:libgit2/libgit2"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "v[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "v:"
+
+build_type: cmake
+description: "Portable C implementation of the Git core methods"
+
+download:
+  download_url: "https://github.com/libgit2/libgit2/archive/v{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "-DBUILD_SHARED_LIBS=ON"
+
+build:
+  timeout_minutes: 25
+
+dependencies:
+  - openssl
+  - libssh2

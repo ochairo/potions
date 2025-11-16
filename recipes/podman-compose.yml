@@ -1,0 +1,63 @@
+name: podman-compose
+version:
+  source: "github-tag:containers/podman-compose"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'v[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: "v:"
+build_type: custom
+description: "Docker Compose replacement for Podman"
+
+download:
+  official_binary: false
+  download_url: "https://github.com/containers/podman-compose/archive/refs/tags/v{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 2
+  custom_install: |
+    mkdir -p "$PREFIX/bin"
+    mkdir -p "$PREFIX/share/podman-compose"
+
+    # Check if we're already in the extracted directory or need to cd into it
+    if [ -f "podman_compose.py" ]; then
+      # Already in the right directory
+      WORK_DIR="."
+    else
+      # Find podman-compose directory
+      COMPOSE_DIR=$(find . -maxdepth 1 -type d -name "podman-compose-*" | head -1)
+
+      if [ -z "$COMPOSE_DIR" ]; then
+        echo "Error: podman-compose directory not found and podman_compose.py not in current dir" >&2
+        ls -la >&2
+        exit 1
+      fi
+
+      WORK_DIR="$COMPOSE_DIR"
+    fi
+
+    # Copy the main script
+    cp "$WORK_DIR/podman_compose.py" "$PREFIX/share/podman-compose/podman_compose.py"
+    chmod +x "$PREFIX/share/podman-compose/podman_compose.py"
+
+    # Create wrapper script in bin that calls python3
+    printf '#!/bin/sh\nexec python3 "%s" "$@"\n' "$PREFIX/share/podman-compose/podman_compose.py" > "$PREFIX/bin/podman-compose"
+    chmod +x "$PREFIX/bin/podman-compose"
+
+    # Verify installation
+    if [ ! -f "$PREFIX/bin/podman-compose" ]; then
+      echo "Error: podman-compose binary not found after installation" >&2
+      ls -la "$PREFIX/bin" >&2
+      exit 1
+    fi
+
+dependencies:
+  - python
+  - podman

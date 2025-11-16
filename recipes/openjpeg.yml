@@ -1,0 +1,29 @@
+name: openjpeg
+version:
+  source: "github-release:uclouvain/openjpeg"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "v[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "v:"
+
+build_type: cmake
+description: "Open-source JPEG 2000 codec"
+
+download:
+  download_url: "https://github.com/uclouvain/openjpeg/archive/v{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "-DBUILD_SHARED_LIBS=ON"
+
+build:
+  timeout_minutes: 20
+
+dependencies: []

@@ -1,0 +1,43 @@
+name: openssl
+version:
+  source: "github-release:openssl/openssl"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'openssl-[0-9]+\.[0-9]+\.[0-9]+[a-z]?'
+  cleanup: "openssl-:"
+
+build_type: custom
+description: "Cryptography and SSL/TLS toolkit"
+
+download:
+  download_url: "https://www.openssl.org/source/openssl-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false # Set to true to enable
+  gpg_keys_url: "https://www.openssl.org/community/omc.html" # OpenSSL team keys (HTML page with key links)
+  signature_url: "https://www.openssl.org/source/openssl-{version}.tar.gz.asc"
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # OpenSSL's Configure script - use absolute PREFIX path
+    # Note: PREFIX is already absolute (set by script_executor.go)
+    ./Configure \
+      --prefix="$PREFIX" \
+      --openssldir="$PREFIX/ssl" \
+      shared \
+      no-tests
+
+build:
+  timeout_minutes: 30
+  out_of_tree: false
+  custom_build: |
+    make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+  custom_install: |
+    make install
+
+dependencies: []

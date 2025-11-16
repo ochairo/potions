@@ -1,0 +1,38 @@
+name: shfmt
+version:
+  source: "github-release:mvdan/sh"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "v[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "v:"
+
+build_type: custom
+description: "Shell script formatter"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/mvdan/sh/releases/download/v{version}/shfmt_v{version}_{os}_{arch}"
+  platforms:
+    darwin-x86_64:
+      os: "darwin"
+      arch: "amd64"
+      suffix: ""
+    darwin-arm64:
+      os: "darwin"
+      arch: "arm64"
+      suffix: ""
+    linux-amd64:
+      os: "linux"
+      arch: "amd64"
+      suffix: ""
+    linux-arm64:
+      os: "linux"
+      arch: "arm64"
+      suffix: ""
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+binary_relpath: "."
+
+dependencies: []

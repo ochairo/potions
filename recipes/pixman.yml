@@ -1,0 +1,29 @@
+name: pixman
+version:
+  source: "url:https://www.cairographics.org/releases/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "pixman-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.gz"
+  cleanup: ""
+
+build_type: gnu_autotools
+description: "Low-level pixel manipulation library"
+
+download:
+  download_url: "https://www.cairographics.org/releases/pixman-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: ""
+
+build:
+  timeout_minutes: 20
+
+dependencies: []

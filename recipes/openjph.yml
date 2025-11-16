@@ -1,0 +1,29 @@
+name: openjph
+version:
+  source: "github-release:aous72/OpenJPH"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: ""
+
+build_type: cmake
+description: "Open-source implementation of JPH (JPEG High Throughput)"
+
+download:
+  download_url: "https://github.com/aous72/OpenJPH/archive/{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: ""
+
+build:
+  timeout_minutes: 20
+
+dependencies: []

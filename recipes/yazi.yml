@@ -1,0 +1,59 @@
+name: yazi
+version:
+  source: "github-release:sxyazi/yazi"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'v[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: "v:"
+build_type: custom
+description: "Blazing fast terminal file manager"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/sxyazi/yazi/releases/download/v{version}/yazi-{arch}-{os}.zip"
+  platforms:
+    darwin-x86_64:
+      os: "apple-darwin"
+      arch: "x86_64"
+    darwin-arm64:
+      os: "apple-darwin"
+      arch: "aarch64"
+    linux-amd64:
+      os: "unknown-linux-gnu"
+      arch: "x86_64"
+    linux-arm64:
+      os: "unknown-linux-gnu"
+      arch: "aarch64"
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract zip archive
+    if ls *.zip >/dev/null 2>&1; then
+      unzip -q *.zip
+    fi
+
+build:
+  timeout_minutes: 1
+  custom_install: |
+    mkdir -p "$PREFIX/bin"
+
+    # Find yazi directory
+    YAZI_DIR=$(find . -type d -name "yazi-*" ! -name "*.zip" | head -1)
+
+    if [ -n "$YAZI_DIR" ] && [ -f "$YAZI_DIR/yazi" ]; then
+      cp "$YAZI_DIR/yazi" "$PREFIX/bin/yazi"
+    elif [ -f "yazi" ]; then
+      cp "yazi" "$PREFIX/bin/yazi"
+    else
+      echo "Error: yazi binary not found" >&2
+      ls -la >&2
+      [ -n "$YAZI_DIR" ] && ls -la "$YAZI_DIR" >&2
+      exit 1
+    fi
+
+    chmod +x "$PREFIX/bin/yazi"
+
+dependencies: []

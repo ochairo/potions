@@ -1,0 +1,46 @@
+name: yarn
+version:
+  source: "github-release:yarnpkg/yarn"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'v[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: "v:"
+build_type: custom
+description: "Fast, reliable package manager for JavaScript"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/yarnpkg/yarn/releases/download/v{version}/yarn-v{version}.tar.gz"
+  platforms:
+    darwin-x86_64: {}
+    darwin-arm64: {}
+    linux-amd64: {}
+    linux-arm64: {}
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 1
+  custom_install: |
+    mkdir -p "$PREFIX/bin"
+    mkdir -p "$PREFIX/share/yarn"
+
+    # Find yarn directory
+    YARN_DIR=$(find . -maxdepth 1 -type d -name "yarn-*" | head -1)
+
+    if [ -z "$YARN_DIR" ]; then
+      echo "Error: yarn directory not found" >&2
+      ls -la >&2
+      exit 1
+    fi
+
+    # Copy yarn files
+    cp -r "$YARN_DIR"/* "$PREFIX/share/yarn/"
+
+    # Create symlinks
+    ln -sf "$PREFIX/share/yarn/bin/yarn" "$PREFIX/bin/yarn"
+    ln -sf "$PREFIX/share/yarn/bin/yarnpkg" "$PREFIX/bin/yarnpkg"
+
+dependencies:
+  - nodejs

@@ -1,0 +1,54 @@
+name: dust
+version:
+  source: "github-release:bootandy/dust"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'v[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: "v:"
+build_type: custom
+description: "More intuitive version of du (written in Rust)"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/bootandy/dust/releases/download/v{version}/dust-v{version}-{arch}-{os}.tar.gz"
+  platforms:
+    darwin-x86_64:
+      os: "apple-darwin"
+      arch: "x86_64"
+    darwin-arm64:
+      os: "apple-darwin"
+      arch: "aarch64"
+    linux-amd64:
+      os: "unknown-linux-musl"
+      arch: "x86_64"
+    linux-arm64:
+      os: "unknown-linux-musl"
+      arch: "aarch64"
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 1
+  custom_install: |
+    mkdir -p "$PREFIX/bin"
+
+    # Binary could be in subdirectory or root
+    DUST_BINARY=""
+    if [ -f "dust-v*/dust" ]; then
+      DUST_BINARY=$(ls dust-v*/dust | head -1)
+    elif [ -f "dust" ]; then
+      DUST_BINARY="dust"
+    fi
+
+    if [ -z "$DUST_BINARY" ] || [ ! -f "$DUST_BINARY" ]; then
+      echo "Error: dust binary not found" >&2
+      ls -la >&2
+      find . -name dust -type f 2>/dev/null >&2
+      exit 1
+    fi
+
+    cp "$DUST_BINARY" "$PREFIX/bin/dust"
+    chmod +x "$PREFIX/bin/dust"
+
+dependencies: []

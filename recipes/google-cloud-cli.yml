@@ -1,0 +1,43 @@
+name: google-cloud-cli
+version:
+  source: "url:https://cloud.google.com/sdk/docs/release-notes"
+  extract_pattern: '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]+'
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+
+# Note: This package may be slow due to large release notes page (2.8MB)
+build_type: custom
+description: "Google Cloud SDK - CLI and libraries for Google Cloud"
+
+download:
+  official_binary: true
+  download_url: "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-{version}-{suffix}.tar.gz"
+  platforms:
+    darwin-x86_64:
+      suffix: "darwin-x86_64"
+    darwin-arm64:
+      suffix: "darwin-arm"
+    linux-amd64:
+      suffix: "linux-x86_64"
+    linux-arm64:
+      suffix: "linux-arm"
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract tarball and ignore symlink errors
+    # The tarball contains broken relative symlinks that will be fixed by the installer
+    true
+
+build:
+  timeout_minutes: 2
+  out_of_tree: false
+  custom_install: |
+    # Package the entire google-cloud-sdk directory
+    mkdir -p $PREFIX
+    find . -name "google-cloud-sdk" -type d -exec cp -r {} $PREFIX/ \; -quit || cp -r . $PREFIX/google-cloud-sdk
+
+dependencies: []

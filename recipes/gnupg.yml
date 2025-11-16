@@ -1,0 +1,34 @@
+name: gnupg
+version:
+  source: "url:https://gnupg.org/ftp/gcrypt/gnupg/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'gnupg-([0-9]+\.[0-9]+\.[0-9]+)\.tar'
+build_type: gnu_autotools
+description: "GNU Privacy Guard - OpenPGP encryption and signing tool"
+
+download:
+  download_url: "https://gnupg.org/ftp/gcrypt/gnupg/gnupg-{version}.tar.bz2"
+  mirror: "https://mirrors.dotsrc.org/gcrypt/gnupg/gnupg-{version}.tar.bz2"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+security:
+  verify_signature: true
+  gpg_keys_url: "https://gnupg.org/signature_key.asc" # Auto-imports GnuPG release keys
+  signature_url: "https://gnupg.org/ftp/gcrypt/gnupg/gnupg-{version}.tar.bz2.sig"
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--disable-doc"
+
+build:
+  timeout_minutes: 20
+  out_of_tree: false
+
+dependencies:
+  - libffi
+  - zlib
+  - bzip2
+  - readline

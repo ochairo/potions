@@ -1,0 +1,31 @@
+name: curl
+version:
+  source: "github-release:curl/curl"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "[0-9]+_[0-9]+_[0-9]+"
+  cleanup: "_:."
+build_type: gnu_autotools
+description: "Command line tool for transferring data with URLs"
+
+download:
+  download_url: "https://curl.se/download/curl-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: true
+  gpg_keys_url: "https://daniel.haxx.se/mykey.asc" # Auto-imports Daniel Stenberg's key
+  signature_url: "https://curl.se/download/curl-{version}.tar.gz.asc"
+  scan_vulnerabilities: true
+configure:
+  flags: "--with-ssl --with-zlib"
+
+build:
+  timeout_minutes: 30
+
+dependencies:
+  - openssl
+  - zlib

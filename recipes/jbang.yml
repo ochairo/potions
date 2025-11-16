@@ -1,0 +1,33 @@
+name: jbang
+description: Run Java code as scripts without project setup - amazing for quick utilities
+version:
+  source: "github-release:jbangdev/jbang"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+
+build_type: custom
+
+download:
+  official_binary: true
+  download_url: "https://github.com/jbangdev/jbang/releases/download/v{version}/jbang-{version}.tar"
+  platforms:
+    darwin-arm64:
+    darwin-x86_64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # jbang is platform-independent (Java-based)
+    tar -xf jbang-*.tar
+
+build:
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    # Copy jbang executable and jar
+    cp jbang-*/bin/jbang* $PREFIX/bin/ || true
+    chmod +x $PREFIX/bin/jbang*

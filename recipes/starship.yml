@@ -1,0 +1,41 @@
+name: starship
+version:
+  source: "github-release:starship/starship"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+
+build_type: custom
+description: "Minimal, fast, and customizable prompt for any shell"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/starship/starship/releases/download/v{version}/starship-{suffix}.tar.gz"
+  platforms:
+    darwin-x86_64:
+      suffix: "x86_64-apple-darwin"
+    darwin-arm64:
+      suffix: "aarch64-apple-darwin"
+    linux-amd64:
+      suffix: "x86_64-unknown-linux-musl"
+    linux-arm64:
+      suffix: "aarch64-unknown-linux-musl"
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Binary download, no build needed
+    true
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    chmod +x starship
+    mkdir -p $PREFIX/bin
+    cp starship $PREFIX/bin/
+
+dependencies: []

@@ -1,0 +1,89 @@
+name: firefox
+version:
+  source: "url:https://www.mozilla.org/en-US/firefox/releases/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+(\.[0-9]+)?'
+build_type: custom
+description: "Mozilla Firefox web browser"
+
+download:
+  official_binary: true
+  download_url: "https://download.mozilla.org/?product=firefox-latest-ssl&os={suffix}&lang=en-US"
+  platforms:
+    darwin-x86_64:
+      suffix: "osx"
+    darwin-arm64:
+      suffix: "osx"
+    linux-amd64:
+      suffix: "linux64"
+    linux-arm64:
+      suffix: "linux64-aarch64"
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract package based on platform
+    case "$(uname -s)" in
+      Darwin*)
+        # macOS - DMG file
+        DMG_FILE=$(ls Firefox*.dmg 2>/dev/null | head -1)
+        if [ -z "$DMG_FILE" ] || [ ! -f "$DMG_FILE" ]; then
+          echo "Error: No DMG file found" >&2
+          ls -la >&2
+          exit 1
+        fi
+        hdiutil attach "$DMG_FILE" || {
+          echo "Error: Failed to mount DMG" >&2
+          exit 1
+        }
+        echo "DMG mounted successfully"
+        ;;
+      Linux*)
+        # Linux - tar archive (xz or bz2)
+        TAR_FILE=""
+        if ls *.tar.xz >/dev/null 2>&1; then
+          TAR_FILE=$(ls *.tar.xz | head -1)
+          tar xJf "$TAR_FILE" || {
+            echo "Error: Failed to extract $TAR_FILE" >&2
+            exit 1
+          }
+        elif ls *.tar.bz2 >/dev/null 2>&1; then
+          TAR_FILE=$(ls *.tar.bz2 | head -1)
+          tar xjf "$TAR_FILE" || {
+            echo "Error: Failed to extract $TAR_FILE" >&2
+            exit 1
+          }
+        else
+          echo "Error: No tar archive found" >&2
+          ls -la >&2
+          exit 1
+        fi
+        echo "Extracted $TAR_FILE successfully"
+        ;;
+    esac
+
+build:
+  timeout_minutes: 5
+  out_of_tree: false
+  custom_install: |
+    case "$(uname -s)" in
+      Darwin*)
+        # macOS
+        mkdir -p $PREFIX/Applications
+        cp -r "/Volumes/Firefox/Firefox.app" $PREFIX/Applications/
+        hdiutil detach "/Volumes/Firefox"
+        mkdir -p $PREFIX/bin
+        ln -sf "$PREFIX/Applications/Firefox.app/Contents/MacOS/firefox" $PREFIX/bin/firefox
+        ;;
+      Linux*)
+        # Linux
+        mkdir -p $PREFIX/lib/firefox $PREFIX/bin
+        cp -r firefox/* $PREFIX/lib/firefox/
+        ln -sf $PREFIX/lib/firefox/firefox $PREFIX/bin/firefox
+        ;;
+    esac
+
+dependencies: []

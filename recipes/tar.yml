@@ -1,0 +1,30 @@
+name: tar
+version:
+  source: "url:https://mirrors.kernel.org/gnu/tar/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'tar-([0-9]+\.[0-9]+(?:\.[0-9]+)?)\.tar\.gz'
+
+build_type: gnu_autotools
+description: "GNU tar"
+
+download:
+  download_url: "https://mirrors.kernel.org/gnu/tar/tar-{version}.tar.gz"
+  mirror: "https://mirrors.kernel.org/tar/tar-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  flags: ""
+
+build:
+  timeout_minutes: 30
+
+dependencies: []

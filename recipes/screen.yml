@@ -1,0 +1,32 @@
+name: screen
+version:
+  source: "url:https://mirrors.kernel.org/gnu/screen/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'screen-([0-9]+\.[0-9]+(?:\.[0-9]+)?)\.tar'
+
+build_type: gnu_autotools
+description: "Terminal multiplexer (alternative to tmux)"
+
+download:
+  download_url: "https://mirrors.kernel.org/gnu/screen/screen-{version}.tar.gz"
+  mirror: "https://mirrors.kernel.org/screen/screen-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--enable-colors256"
+
+build:
+  timeout_minutes: 10
+  out_of_tree: false
+
+dependencies:
+  - ncurses

@@ -1,0 +1,56 @@
+name: promtail
+version:
+  source: "github-release:grafana/loki"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+
+build_type: custom
+description: "Agent for Loki that ships logs"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/grafana/loki/releases/download/v{version}/promtail-{os}-{arch}.zip"
+  platforms:
+    darwin-x86_64:
+      os: "darwin"
+      arch: "amd64"
+    darwin-arm64:
+      os: "darwin"
+      arch: "arm64"
+    linux-amd64:
+      os: "linux"
+      arch: "amd64"
+    linux-arm64:
+      os: "linux"
+      arch: "arm64"
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Unzip binary
+    unzip promtail-*.zip
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    # Find promtail binary with various patterns
+    BINARY=$(ls promtail-* 2>/dev/null | head -1)
+    if [ -z "$BINARY" ]; then
+      BINARY=$(ls */promtail-* 2>/dev/null | head -1)
+    fi
+    if [ -n "$BINARY" ]; then
+      cp "$BINARY" $PREFIX/bin/promtail
+      chmod +x $PREFIX/bin/promtail
+    else
+      echo "Error: promtail binary not found" >&2
+      exit 1
+    fi
+
+dependencies:
+  - unzip

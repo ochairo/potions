@@ -1,0 +1,56 @@
+name: pipx
+version:
+  source: "github-release:pypa/pipx"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+
+build_type: custom
+description: "Install and run Python applications in isolated environments"
+
+download:
+  download_url: "https://github.com/pypa/pipx/archive/refs/tags/{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Python package, no build needed
+    true
+
+build:
+  timeout_minutes: 5
+  out_of_tree: false
+  custom_install: |
+    # Set version for setuptools-scm (it can't detect from tarball)
+    export SETUPTOOLS_SCM_PRETEND_VERSION="${VERSION}"
+
+    # pipx tarball extracts directly to current directory (no subdirectory created)
+    # Verify we have the expected structure (pyproject.toml in current dir)
+    if [ ! -f "pyproject.toml" ]; then
+      echo "Error: pyproject.toml not found - not in pipx source directory" >&2
+      echo "Current directory contents:" >&2
+      ls -la >&2
+      exit 1
+    fi
+
+    # Install with --no-deps to avoid permission issues
+    python3 -m pip install --prefix=$PREFIX --no-deps . || {
+      echo "Error: pip install failed" >&2
+      exit 1
+    }
+
+    # Verify installation
+    if [ ! -f "$PREFIX/bin/pipx" ]; then
+      echo "Error: pipx binary not found after installation" >&2
+      exit 1
+    fi
+
+dependencies:
+  - python

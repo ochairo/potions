@@ -1,0 +1,35 @@
+NOTICE
+
+## Licensing
+
+This repository contains two distinct components with different licensing terms:
+
+### 1. Source Code (MIT License)
+
+The MIT License applies to:
+- Build scripts and automation code
+- Package definitions (recipes)
+- Documentation and configuration files
+
+You may freely use, modify, and distribute this code under the MIT License terms
+found in the LICENSE file.
+
+### 2. Pre-built Binary Releases
+
+Pre-built binaries distributed through GitHub Releases are intended for use
+exclusively by <https://github.com/ochairo/wand>. Unauthorized redistribution or
+commercial use of these pre-built binaries is prohibited.
+
+### 3. Packaged Software
+
+Each software package built and distributed through this project (age, ansible,
+argocd, etc.) retains its original license as specified by the upstream project.
+This repository does not claim any license over the packaged software itself.
+
+Please refer to each project's repository for specific licensing information:
+- The package's recipe file contains the upstream repository URL
+- License information is included in SBOM files distributed with each release
+
+## Questions
+
+For licensing questions, please open an issue in this repository.

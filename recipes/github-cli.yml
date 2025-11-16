@@ -1,0 +1,82 @@
+name: github-cli
+version:
+  source: "github-release:cli/cli"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "GitHub CLI"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/cli/cli/releases/download/v{version}/gh_{version}_{suffix}"
+  platforms:
+    darwin-x86_64:
+      suffix: "macOS_amd64.zip"
+    darwin-arm64:
+      suffix: "macOS_arm64.zip"
+    linux-amd64:
+      suffix: "linux_amd64.tar.gz"
+    linux-arm64:
+      suffix: "linux_arm64.tar.gz"
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract archive (zip for macOS, tar.gz for Linux)
+    if ls *.zip >/dev/null 2>&1; then
+      unzip -q *.zip || {
+        echo "Error: Failed to extract zip file" >&2
+        exit 1
+      }
+    elif ls *.tar.gz >/dev/null 2>&1; then
+      tar xzf *.tar.gz || {
+        echo "Error: Failed to extract tar.gz file" >&2
+        exit 1
+      }
+    else
+      echo "Error: No archive file found" >&2
+      ls -la >&2
+      exit 1
+    fi
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+
+    # Find gh binary in various possible locations
+    GH_BINARY=""
+    if [ -f gh_*/bin/gh ]; then
+      GH_BINARY=$(ls gh_*/bin/gh | head -1)
+    elif [ -f bin/gh ]; then
+      GH_BINARY="bin/gh"
+    elif [ -f gh ]; then
+      GH_BINARY="gh"
+    fi
+
+    if [ -z "$GH_BINARY" ] || [ ! -f "$GH_BINARY" ]; then
+      echo "Error: gh binary not found" >&2
+      echo "Directory contents:" >&2
+      ls -la >&2
+      find . -name gh -type f 2>/dev/null >&2
+      exit 1
+    fi
+
+    cp "$GH_BINARY" $PREFIX/bin/gh || {
+      echo "Error: Failed to copy gh binary" >&2
+      exit 1
+    }
+
+    chmod +x $PREFIX/bin/gh
+
+    # Verify installation
+    if [ ! -x "$PREFIX/bin/gh" ]; then
+      echo "Error: gh binary not executable after installation" >&2
+      exit 1
+    fi
+
+dependencies: []

@@ -1,0 +1,33 @@
+name: nodejs
+version:
+  source: "github-release:nodejs/node"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+
+build_type: custom
+description: "Node.js JavaScript runtime"
+
+download:
+  download_url: "https://nodejs.org/dist/v{version}/node-v{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import # Node.js uses SHASUMS256.txt with GPG signature on separate file
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    ./configure --prefix=$PREFIX
+
+build:
+  timeout_minutes: 90
+  out_of_tree: false
+  make_args: "-j$(nproc)"
+
+dependencies:
+  - python

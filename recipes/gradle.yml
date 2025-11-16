@@ -1,0 +1,34 @@
+name: gradle
+description: Powerful build automation tool for JVM languages (Java, Kotlin, Groovy, Scala)
+version:
+  source: "github-release:gradle/gradle"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+
+build_type: custom
+
+download:
+  official_binary: true
+  download_url: "https://services.gradle.org/distributions/gradle-{version}-bin.zip"
+  platforms:
+    darwin-arm64:
+    darwin-x86_64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract the zip file
+    unzip -q gradle-*.zip
+
+build:
+  custom_install: |
+    mkdir -p $PREFIX/bin $PREFIX/lib
+    # Copy the entire gradle directory
+    cp -r gradle-*/bin/* $PREFIX/bin/
+    cp -r gradle-*/lib/* $PREFIX/lib/
+    chmod +x $PREFIX/bin/gradle*

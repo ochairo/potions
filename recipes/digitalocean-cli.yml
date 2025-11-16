@@ -1,0 +1,42 @@
+name: digitalocean-cli
+version:
+  source: "github-release:digitalocean/doctl"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "DigitalOcean CLI"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/digitalocean/doctl/releases/download/v{version}/doctl-{version}-{os}-{arch}.tar.gz"
+  platforms:
+    darwin-x86_64:
+      os: "darwin"
+      arch: "amd64"
+    darwin-arm64:
+      os: "darwin"
+      arch: "arm64"
+    linux-amd64:
+      os: "linux"
+      arch: "amd64"
+    linux-arm64:
+      os: "linux"
+      arch: "arm64"
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract tarball
+    true
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    cp doctl $PREFIX/bin/
+
+dependencies: []

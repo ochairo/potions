@@ -1,0 +1,31 @@
+name: cmake
+version:
+  source: "github-release:Kitware/CMake"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "Cross-platform build system"
+
+download:
+  download_url: "https://github.com/Kitware/CMake/releases/download/v{version}/cmake-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: "./bootstrap --prefix=$PREFIX --parallel=$(nproc 2>/dev/null || sysctl -n hw.ncpu)"
+
+build:
+  timeout_minutes: 60
+  out_of_tree: false
+  custom_build: |
+    make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+    make install
+
+dependencies: []

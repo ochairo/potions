@@ -1,0 +1,30 @@
+name: sqlite
+version:
+  source: "url:https://www.sqlite.org/download.html"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "[0-9]+"
+
+build_type: gnu_autotools
+description: "SQLite embedded database"
+
+download:
+  download_url: "https://www.sqlite.org/2024/sqlite-autoconf-3470000.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--enable-fts5 --enable-json1 --enable-rtree"
+
+build:
+  timeout_minutes: 10
+  out_of_tree: false
+
+dependencies: []

@@ -1,0 +1,3 @@
+# Gitleaks Ignore
+
+README.md:sidekiq-secret:39

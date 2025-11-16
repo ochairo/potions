@@ -1,0 +1,10 @@
+NOTICE
+
+This license (MIT License) applies only to the build scripts, package definitions,
+and documentation in this repository.
+
+Each prebuilt binary distributed through this project retains its original license
+as specified by its respective upstream project. Please refer to the individual
+project's repository for specific licensing information.
+
+The license for this project is subject to change in future versions.

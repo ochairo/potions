@@ -1,0 +1,52 @@
+name: visual-studio-code
+version:
+  source: "url:https://update.code.visualstudio.com/api/update/darwin/stable/latest"
+  extract_pattern: "productVersion[^0-9]+[0-9]+[.][0-9]+[.][0-9]+"
+  cleanup: "s/[^0-9.]//g"
+
+build_type: custom
+description: "Visual Studio Code - code editor"
+
+download:
+  official_binary: true
+  download_url: "https://update.code.visualstudio.com/{version}/{suffix}/stable"
+  platforms:
+    darwin-x86_64:
+      suffix: "darwin"
+    darwin-arm64:
+      suffix: "darwin-arm64"
+    linux-amd64:
+      suffix: "linux-x64"
+    linux-arm64:
+      suffix: "linux-arm64"
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Archive already extracted by downloader
+    true
+
+build:
+  timeout_minutes: 5
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    case "$(uname -s)" in
+      Darwin*)
+        mkdir -p $PREFIX/Applications
+        find . -name "*.app" -type d -exec cp -r {} "$PREFIX/Applications/Visual Studio Code.app" \; -quit
+        ln -sf "$PREFIX/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" $PREFIX/bin/code
+        ;;
+      *)
+        mkdir -p $PREFIX/lib/vscode
+        find . -type d -name "VSCode-linux-*" -exec sh -c 'cp -r "$1"/* $PREFIX/lib/vscode/' sh {} \; -quit
+        ln -sf $PREFIX/lib/vscode/bin/code $PREFIX/bin/code
+        ;;
+    esac
+
+dependencies:
+  - unzip

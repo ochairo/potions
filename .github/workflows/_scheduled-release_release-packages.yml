@@ -1,0 +1,315 @@
+name: "_Scheduled Release - Release Packages"
+
+on:
+  workflow_call:
+    inputs:
+      packages:
+        description: "JSON array of packages to check for release"
+        required: true
+        type: string
+      run_id:
+        description: "Workflow run ID for artifact download"
+        required: true
+        type: string
+    secrets:
+      GH_TOKEN:
+        required: true
+
+jobs:
+  release-packages:
+    name: Release Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write # Required for creating releases
+      actions: read # Required for artifact download
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Set up Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build potions CLI
+        run: |
+          echo "🔨 Building potions CLI..."
+          go build -o bin/potions ./cmd/potions
+          echo "✅ Built: $(./bin/potions help | head -1)"
+
+      - name: Wait for artifact uploads
+        run: |
+          echo "⏳ Waiting 30 seconds for artifacts to be uploaded..."
+          sleep 30
+
+      - name: Check GitHub API rate limits
+        run: |
+          echo "🔍 Checking GitHub API rate limits..."
+          RATE_INFO=$(gh api rate_limit --jq '.rate')
+          REMAINING=$(echo "$RATE_INFO" | jq -r '.remaining')
+          LIMIT=$(echo "$RATE_INFO" | jq -r '.limit')
+          RESET_TIME=$(echo "$RATE_INFO" | jq -r '.reset')
+
+          echo "📊 API Rate Limit: $REMAINING / $LIMIT remaining"
+
+          if [ "$REMAINING" -lt 100 ]; then
+            CURRENT_TIME=$(date +%s)
+            WAIT_TIME=$((RESET_TIME - CURRENT_TIME + 60))
+            if [ "$WAIT_TIME" -gt 0 ] && [ "$WAIT_TIME" -lt 3600 ]; then
+              echo "⚠️  Low rate limit ($REMAINING remaining). Waiting ${WAIT_TIME}s for reset..."
+              sleep "$WAIT_TIME"
+            else
+              echo "⚠️  Low rate limit but proceeding anyway (reset time: $(date -d @$RESET_TIME 2>/dev/null || date -r $RESET_TIME))"
+            fi
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Download artifacts
+        run: |
+          echo "📥 Downloading artifacts from run ${{ inputs.run_id }}"
+          rm -rf current-artifacts
+          mkdir -p current-artifacts
+
+          # Get list of all artifacts for this run using API
+          echo "🔍 Fetching artifact list..."
+          gh api repos/${{ github.repository }}/actions/runs/${{ inputs.run_id }}/artifacts --jq '.artifacts[] | select(.name | endswith("-builds")) | .name' > artifact-list.txt || {
+            echo "⚠️  Failed to get artifact list, will retry downloads anyway"
+            touch artifact-list.txt
+          }
+
+          ARTIFACT_COUNT=$(wc -l < artifact-list.txt | tr -d ' ')
+          echo "📦 Found $ARTIFACT_COUNT build artifact(s) to download"
+
+          # Show artifact breakdown by platform
+          echo ""
+          echo "Artifact breakdown:"
+          grep "linux-x86_64" artifact-list.txt 2>/dev/null | wc -l | xargs -I {} echo "  Linux x86_64: {} artifacts"
+          grep "linux-arm64" artifact-list.txt 2>/dev/null | wc -l | xargs -I {} echo "  Linux ARM64: {} artifacts"
+          grep "macos-arm64" artifact-list.txt 2>/dev/null | wc -l | xargs -I {} echo "  macOS ARM64: {} artifacts"
+          grep "macos-x86_64" artifact-list.txt 2>/dev/null | wc -l | xargs -I {} echo "  macOS Intel: {} artifacts"
+          echo ""
+
+          # Download artifacts with parallel processing and better retry logic
+          DOWNLOAD_SUCCESS=false
+          for attempt in {1..3}; do
+            echo "🔄 Download attempt $attempt of 3..."
+
+            # Try to download all artifacts at once first (fastest if it works)
+            if gh run download ${{ inputs.run_id }} --repo ${{ github.repository }} --dir current-artifacts --pattern '*-builds' 2>&1; then
+              echo "✅ Successfully downloaded all artifacts"
+              DOWNLOAD_SUCCESS=true
+              break
+            fi
+
+            # If bulk download fails, try downloading individual artifacts (more resilient)
+            echo "⚠️  Bulk download failed, trying individual artifact downloads..."
+            INDIVIDUAL_SUCCESS=true
+
+            while read -r artifact_name; do
+              [ -z "$artifact_name" ] && continue
+
+              # Skip if already downloaded
+              if [ -d "current-artifacts/$artifact_name" ]; then
+                echo "  ⏭️  Skipping already downloaded: $artifact_name"
+                continue
+              fi
+
+              echo "  📥 Downloading: $artifact_name"
+              if ! gh run download ${{ inputs.run_id }} --repo ${{ github.repository }} --name "$artifact_name" --dir "current-artifacts/$artifact_name" 2>&1; then
+                echo "  ❌ Failed to download: $artifact_name"
+                INDIVIDUAL_SUCCESS=false
+              fi
+            done < artifact-list.txt
+
+            if [ "$INDIVIDUAL_SUCCESS" = "true" ]; then
+              echo "✅ Successfully downloaded all individual artifacts"
+              DOWNLOAD_SUCCESS=true
+              break
+            fi
+
+            if [ "$attempt" -lt 3 ]; then
+              echo "⚠️  Some downloads failed, waiting 30s before retry..."
+              sleep 30
+            fi
+          done
+
+          if [ "$DOWNLOAD_SUCCESS" = "false" ]; then
+            echo "⚠️  Some artifacts failed to download after 3 attempts"
+            echo "ℹ️  Continuing with available artifacts..."
+          fi
+
+          # Show what we got
+          DOWNLOADED_FILES=$(find current-artifacts -name '*.tar.gz' -type f 2>/dev/null | wc -l | tr -d ' ')
+          TOTAL_SIZE=$(du -sh current-artifacts 2>/dev/null | cut -f1)
+          echo "📊 Downloaded $DOWNLOADED_FILES package file(s), Total size: $TOTAL_SIZE"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Flatten artifacts directory
+        run: |
+          echo "📁 Flattening artifacts directory structure..."
+          echo ""
+
+          # Count files before flattening
+          BEFORE_COUNT=$(find current-artifacts -type f \( -name '*.tar.gz' -o -name '*.sha256' -o -name '*.sha512' -o -name '*.sbom.json' -o -name '*.provenance.json' \) | wc -l | tr -d ' ')
+          echo "📊 Found $BEFORE_COUNT artifact files to flatten"
+
+          # Show sample of current structure
+          echo "Current structure (sample):"
+          find current-artifacts -type f | head -10
+          echo ""
+
+          # Create temp directory for flattened artifacts
+          mkdir -p artifacts-flat
+
+          # Move all artifact files from nested directories to flat structure
+          # Use verbose mode to see what's being moved
+          find current-artifacts -type f \( \
+            -name '*.tar.gz' -o \
+            -name '*.sha256' -o \
+            -name '*.sha512' -o \
+            -name '*.sbom.json' -o \
+            -name '*.provenance.json' \
+          \) -exec sh -c 'echo "  → $(basename "$1")"; mv "$1" artifacts-flat/' _ {} \;
+
+          # Replace current-artifacts with flattened version
+          rm -rf current-artifacts
+          mv artifacts-flat current-artifacts
+
+          # Show final structure
+          FINAL_COUNT=$(find current-artifacts -type f | wc -l | tr -d ' ')
+          echo ""
+          echo "✅ Flattened $FINAL_COUNT files into current-artifacts/"
+          echo ""
+          echo "Final structure (sample):"
+          ls -lh current-artifacts/ | head -10 || true
+          echo ""
+
+          if [ "$FINAL_COUNT" -eq 0 ]; then
+            echo "⚠️  WARNING: No files found after flattening!"
+            exit 1
+          fi
+
+      - name: Verify artifact integrity
+        run: |
+          echo "🔐 Verifying artifact checksums..."
+          VERIFIED=0
+          FAILED=0
+
+          find current-artifacts -name '*.tar.gz' -type f 2>/dev/null | while read -r tarball; do
+            if [ -f "${tarball}.sha256" ]; then
+              if ./bin/potions verify "$tarball" --checksum "${tarball}.sha256" 2>/dev/null; then
+                VERIFIED=$((VERIFIED + 1))
+              else
+                echo "❌ Checksum verification failed for $(basename "$tarball")"
+                FAILED=$((FAILED + 1))
+                # Remove corrupted files
+                rm -f "$tarball" "${tarball}.sha256"
+              fi
+            fi
+          done
+
+          echo "📊 Verification: $VERIFIED passed, $FAILED failed"
+          if [ "$FAILED" -gt 0 ]; then
+            echo "⚠️  Warning: $FAILED corrupted artifacts removed"
+          fi
+
+      - name: Validate artifacts before release
+        run: |
+          echo "🔍 Validating artifacts..."
+
+          # Parse packages JSON and validate each one
+          echo '${{ inputs.packages }}' | jq -r '.[] | "\(.package) \(.version)"' | while read -r package version; do
+            echo "Validating $package $version..."
+            if ./bin/potions validate-release "$package" "$version" --artifacts current-artifacts --recipes recipes --quiet; then
+              echo "  ✅ $package $version validated"
+            else
+              echo "  ⚠️  $package $version validation failed (will attempt release anyway)"
+            fi
+          done
+
+      - name: Process releases
+        run: |
+          echo "🚀 Processing package releases..."
+
+          # Use CLI to handle entire release process
+          ./bin/potions release \
+            --packages '${{ inputs.packages }}' \
+            --artifacts current-artifacts \
+            --recipes recipes \
+            --owner ${{ github.repository_owner }} \
+            --repo ${{ github.event.repository.name }} \
+            --failures release-failures.txt \
+            --successes release-successes.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Release Summary
+        if: always()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 Release Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          SUCCESS_COUNT=0
+          FAILURE_COUNT=0
+
+          if [ -f release-successes.txt ]; then
+            SUCCESS_COUNT=$(wc -l < release-successes.txt | tr -d ' ')
+            echo "✅ Releases created: $SUCCESS_COUNT"
+            if [ -s release-successes.txt ]; then
+              echo ""
+              echo "Successful releases:"
+              cat release-successes.txt | while read line; do
+                echo "  • $line"
+              done
+            fi
+          else
+            echo "✅ Releases created: 0"
+          fi
+
+          if [ -f release-failures.txt ]; then
+            FAILURE_COUNT=$(wc -l < release-failures.txt | tr -d ' ')
+            echo ""
+            echo "❌ Failed releases: $FAILURE_COUNT"
+            if [ -s release-failures.txt ]; then
+              echo ""
+              echo "Failed releases:"
+              cat release-failures.txt | while read line; do
+                echo "  • $line"
+              done
+            fi
+          else
+            echo ""
+            echo "❌ Failed releases: 0"
+          fi
+
+          TOTAL=$((SUCCESS_COUNT + FAILURE_COUNT))
+          if [ "$TOTAL" -gt 0 ]; then
+            SUCCESS_RATE=$(awk "BEGIN {printf \"%.1f\", $SUCCESS_COUNT * 100.0 / $TOTAL}")
+            echo ""
+            echo "📦 Total packages processed: $TOTAL"
+            echo "🎯 Success rate: ${SUCCESS_RATE}%"
+          fi
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          # Exit with error if all releases failed
+          if [ "$SUCCESS_COUNT" -eq 0 ] && [ "$FAILURE_COUNT" -gt 0 ]; then
+            echo ""
+            echo "⚠️  Error: All release attempts failed"
+            exit 1
+          fi
+
+      - name: Upload release report
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: release-report
+          path: |
+            release-failures.txt
+            release-successes.txt
+          retention-days: 30
+          if-no-files-found: ignore

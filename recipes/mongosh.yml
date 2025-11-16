@@ -1,0 +1,37 @@
+name: mongosh
+description: Modern MongoDB Shell - Interactive JavaScript shell for MongoDB
+version:
+  source: "github-release:mongodb-js/mongosh"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+
+build_type: custom
+
+download:
+  official_binary: true
+  download_url: "https://github.com/mongodb-js/mongosh/releases/download/v{version}/mongosh-{version}-{suffix}.zip"
+  platforms:
+    darwin-arm64:
+      suffix: "darwin-arm64"
+    darwin-x86_64:
+      suffix: "darwin-x64"
+    linux-amd64:
+      suffix: "linux-x64"
+    linux-arm64:
+      suffix: "linux-arm64"
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract the zip file
+    unzip -q mongosh-*.zip
+
+build:
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    # Copy all binaries from the bin directory
+    cp mongosh-*/bin/mongosh* $PREFIX/bin/ || true
+    chmod +x $PREFIX/bin/mongosh*

@@ -1,0 +1,37 @@
+name: skopeo
+version:
+  source: "github-release:containers/skopeo"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "Work with remote container images registries"
+
+download:
+  download_url: "https://github.com/containers/skopeo/archive/refs/tags/v{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # skopeo is written in Go
+    true
+
+build:
+  timeout_minutes: 10
+  out_of_tree: false
+  custom_build: |
+    export GOCACHE=$(cd $PREFIX && pwd)/.cache/go-build
+    export GOMODCACHE=$(cd $PREFIX && pwd)/pkg/mod
+    mkdir -p $GOCACHE $GOMODCACHE
+    make bin/skopeo
+    mkdir -p $PREFIX/bin
+    cp bin/skopeo $PREFIX/bin/
+
+dependencies:
+  - go

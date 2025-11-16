@@ -1,0 +1,31 @@
+name: perl
+version:
+  source: "url:https://www.cpan.org/src/5.0/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'perl-[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: "perl-:"
+build_type: custom
+description: "Perl programming language"
+
+download:
+  download_url: "https://www.cpan.org/src/5.0/perl-{version}.tar.gz"
+  mirror: "https://cpan.metacpan.org/authors/id/P/PE/PERL/perl-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    ./Configure -des -Dprefix=$(cd $PREFIX && pwd) -Dusethreads -Dman1dir=none -Dman3dir=none
+
+build:
+  timeout_minutes: 45
+  out_of_tree: false
+  make_args: "-j$(nproc)"
+
+dependencies: []

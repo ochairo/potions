@@ -1,0 +1,31 @@
+name: oha
+description: HTTP load testing tool with TUI - Rust-based, faster alternative to hey/wrk
+version:
+  source: "github-release:hatoo/oha"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+
+build_type: custom
+
+download:
+  official_binary: true
+  download_url: "https://github.com/hatoo/oha/releases/download/v{version}/oha-{suffix}"
+  platforms:
+    darwin-arm64:
+      suffix: "macos-arm64"
+    darwin-x86_64:
+      suffix: "macos-amd64"
+    linux-amd64:
+      suffix: "linux-amd64"
+    linux-arm64:
+      suffix: "linux-arm64"
+
+configure:
+  script: |
+    # oha is downloaded as a single binary
+    chmod +x oha-*
+
+build:
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    cp oha-* $PREFIX/bin/oha
+    chmod +x $PREFIX/bin/oha

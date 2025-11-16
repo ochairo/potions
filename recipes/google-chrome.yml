@@ -1,0 +1,54 @@
+name: google-chrome
+version:
+  source: "static:latest"
+build_type: custom
+description: "Google Chrome web browser"
+
+download:
+  official_binary: true
+  download_url: "https://dl.google.com/{suffix}"
+  platforms:
+    darwin-x86_64:
+      suffix: "chrome/mac/universal/stable/GGRO/googlechrome.dmg"
+    darwin-arm64:
+      suffix: "chrome/mac/universal/stable/GGRO/googlechrome.dmg"
+    linux-amd64:
+      suffix: "linux/direct/google-chrome-stable_current_amd64.deb"
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract package
+    case "$(uname -s)" in
+      Darwin*)
+        hdiutil attach googlechrome.dmg
+        echo "DMG mounted"
+        ;;
+      *)
+        ar x google-chrome-stable_*.deb
+        tar xf data.tar.xz
+        ;;
+    esac
+
+build:
+  timeout_minutes: 5
+  out_of_tree: false
+  custom_install: |
+    case "$(uname -s)" in
+      Darwin*)
+        mkdir -p $PREFIX/Applications
+        cp -r "/Volumes/Google Chrome/Google Chrome.app" $PREFIX/Applications/
+        hdiutil detach "/Volumes/Google Chrome"
+        mkdir -p $PREFIX/bin
+        ln -sf "$PREFIX/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" $PREFIX/bin/chrome
+        ;;
+      *)
+        mkdir -p $PREFIX/lib/google-chrome $PREFIX/bin
+        cp -r opt/google/chrome/* $PREFIX/lib/google-chrome/
+        ln -sf $PREFIX/lib/google-chrome/google-chrome $PREFIX/bin/chrome
+        ;;
+    esac
+
+dependencies: []

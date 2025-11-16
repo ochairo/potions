@@ -1,0 +1,30 @@
+name: nginx
+version:
+  source: "github-tag:nginx/nginx"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'release-[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: 'release-:'
+build_type: gnu_autotools
+description: "High-performance HTTP server and reverse proxy"
+
+download:
+  download_url: "https://nginx.org/download/nginx-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--with-http_ssl_module --with-http_v2_module --with-http_realip_module --with-http_gzip_static_module"
+
+build:
+  timeout_minutes: 15
+  out_of_tree: false
+
+dependencies:
+  - openssl
+  - zlib

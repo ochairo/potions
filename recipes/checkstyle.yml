@@ -1,0 +1,32 @@
+name: checkstyle
+description: Java code style checker - enforce coding standards and best practices
+version:
+  source: "github-release:checkstyle/checkstyle"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+
+build_type: custom
+
+download:
+  official_binary: true
+  download_url: "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-{version}/checkstyle-{version}-all.jar"
+  platforms:
+    darwin-arm64:
+    darwin-x86_64:
+    linux-amd64:
+    linux-arm64:
+
+configure:
+  script: |
+    # checkstyle is a JAR file, create wrapper script
+    cat > checkstyle << 'WRAPPER'
+    #!/bin/sh
+    DIR="$(cd "$(dirname "$0")" && pwd)"
+    exec java -jar "$DIR/../lib/checkstyle.jar" "$@"
+    WRAPPER
+    chmod +x checkstyle
+
+build:
+  custom_install: |
+    mkdir -p $PREFIX/bin $PREFIX/lib
+    cp checkstyle-*.jar $PREFIX/lib/checkstyle.jar
+    cp checkstyle $PREFIX/bin/

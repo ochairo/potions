@@ -1,0 +1,28 @@
+name: openssl
+version:
+  source: "github-release:openssl/openssl"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'openssl-[0-9]+\.[0-9]+\.[0-9]+[a-z]?'
+  cleanup: "openssl-:"
+build_type: custom
+description: "Cryptography and SSL/TLS toolkit"
+
+download:
+  download_url: "https://www.openssl.org/source/openssl-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+configure:
+  script: "./Configure --prefix=$(cd $PREFIX && pwd) --openssldir=$(cd $PREFIX && pwd)/ssl shared"
+
+build:
+  timeout_minutes: 30
+  out_of_tree: false
+  custom_build: |
+    make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+  custom_install: |
+    make install
+
+dependencies: []

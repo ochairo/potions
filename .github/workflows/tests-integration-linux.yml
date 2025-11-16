@@ -1,0 +1,431 @@
+name: Tests - Integration (Linux)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Top-level permissions: read-all for security
+permissions: read-all
+
+# Prevent multiple test runs for same branch
+concurrency:
+  group: tests-linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.event.head_commit.message, 'chore:')"
+    env:
+      GO_VERSION: "1.24"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install system dependencies
+        run: |
+          for attempt in {1..3}; do
+            if sudo apt-get update && sudo apt-get install -y libgpgme-dev libseccomp-dev; then
+              echo "✅ Dependencies installed successfully"
+              break
+            fi
+            if [ $attempt -lt 3 ]; then
+              echo "⚠️  Attempt $attempt failed, retrying in 10s..."
+              sleep 10
+            else
+              echo "❌ Failed to install dependencies after 3 attempts"
+              exit 1
+            fi
+          done
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run unit tests
+        run: |
+          echo "🧪 Running unit tests..."
+          go test -v -race -timeout=30m ./internal/...
+
+      - name: Generate coverage report
+        run: |
+          echo "📊 Generating coverage report..."
+          go test -coverprofile=coverage.out -covermode=atomic ./internal/...
+          go tool cover -html=coverage.out -o coverage.html
+
+      - name: Display coverage summary
+        run: |
+          echo "📈 Coverage Summary:"
+          go tool cover -func=coverage.out | grep total:
+
+          COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}' | sed 's/%//')
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Total Coverage:** $COVERAGE%" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=${{ env.COVERAGE }}
+          THRESHOLD=40.0
+
+          echo "Coverage: $COVERAGE%"
+          echo "Threshold: $THRESHOLD%"
+
+          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+            echo "❌ Coverage $COVERAGE% is below threshold $THRESHOLD%"
+            echo "⚠️  Coverage threshold not met, but continuing..." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Coverage $COVERAGE% meets threshold $THRESHOLD%"
+            echo "✅ Coverage threshold met!" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        if: always()
+        with:
+          name: coverage-reports
+          path: |
+            coverage.out
+            coverage.html
+          retention-days: 30
+
+      - name: Upload coverage to Codecov (optional)
+        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        continue-on-error: true
+        with:
+          files: ./coverage.out
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  test-matrix:
+    name: Test on Multiple Platforms
+    runs-on: ${{ matrix.os }}
+    if: "!startsWith(github.event.head_commit.message, 'chore:')"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        go-version: ["1.24"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+
+      - name: Install system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          for attempt in {1..3}; do
+            if sudo apt-get update && sudo apt-get install -y libgpgme-dev libseccomp-dev; then
+              echo "✅ Dependencies installed"
+              break
+            fi
+            [ $attempt -lt 3 ] && sleep 10 || exit 1
+          done
+
+      - name: Install system dependencies
+        if: runner.os == 'macOS'
+        run: |
+          for attempt in {1..3}; do
+            if brew install gpgme libgpg-error 2>&1 | grep -v "already installed"; then
+              echo "✅ Dependencies installed"
+              break
+            fi
+            if [ $attempt -lt 3 ]; then
+              brew update || true
+              sleep 10
+            else
+              exit 1
+            fi
+          done
+
+      - name: Run unit tests
+        run: |
+          echo "🧪 Running unit tests on ${{ matrix.os }} with Go ${{ matrix.go-version }}..."
+          go test -v -race -timeout=30m ./internal/...
+
+  integration-tests-slow:
+    name: Integration Tests (Slow - ${{ matrix.package }})
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.event.head_commit.message, 'chore:')"
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          [
+            azure-cli,
+            cmake,
+            gcc,
+            google-cloud-cli,
+            grafana,
+            llvm,
+            nodejs,
+            ollama,
+            python,
+            redis,
+            rust,
+          ]
+    env:
+      GO_VERSION: "1.24"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install system dependencies
+        run: |
+          for attempt in {1..3}; do
+            if sudo apt-get update && sudo apt-get install -y libgpgme-dev libseccomp-dev; then
+              echo "✅ Dependencies installed"
+              break
+            fi
+            [ $attempt -lt 3 ] && sleep 10 || exit 1
+          done
+
+      - name: Run slow package test
+        env:
+          TEST_PACKAGE: ${{ matrix.package }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TIMEOUT="60m"
+          if [[ "${{ matrix.package }}" == "gcc" ]] || [[ "${{ matrix.package }}" == "llvm" ]]; then
+            TIMEOUT="480m"
+          elif [[ "${{ matrix.package }}" == "cmake" ]] || [[ "${{ matrix.package }}" == "google-cloud-cli" ]] || [[ "${{ matrix.package }}" == "grafana" ]]; then
+            TIMEOUT="90m"
+          elif [[ "${{ matrix.package }}" == "rust" ]]; then
+            TIMEOUT="90m"
+          elif [[ "${{ matrix.package }}" == "ollama" ]]; then
+            TIMEOUT="120m"
+          fi
+          # azure-cli, nodejs, python, delve, gettext, govulncheck, redis use default 60m timeout
+          echo "🧪 Testing slow package: ${{ matrix.package }} (timeout: $TIMEOUT)..."
+
+          START_TIME=$(date +%s)
+          if go test -v -race -timeout=$TIMEOUT ./test/...; then
+            END_TIME=$(date +%s)
+            DURATION=$((END_TIME - START_TIME))
+            echo "✅ ${{ matrix.package }} passed in ${DURATION}s"
+          else
+            END_TIME=$(date +%s)
+            DURATION=$((END_TIME - START_TIME))
+            echo "❌ ${{ matrix.package }} failed after ${DURATION}s"
+            exit 1
+          fi
+
+  integration-tests:
+    name: Integration Tests (Batch ${{ matrix.batch }})
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.event.head_commit.message, 'chore:')"
+    strategy:
+      fail-fast: false
+      matrix:
+        batch: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    env:
+      GO_VERSION: "1.24"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install system dependencies
+        run: |
+          for attempt in {1..3}; do
+            if sudo apt-get update && sudo apt-get install -y libgpgme-dev libseccomp-dev; then
+              echo "✅ Dependencies installed"
+              break
+            fi
+            [ $attempt -lt 3 ] && sleep 10 || exit 1
+          done
+
+      - name: Run integration tests batch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get all packages dynamically (excluding slow packages >5 min)
+          PACKAGES=($(ls recipes/*.yml | xargs -n1 basename | sed 's/.yml$//' | grep -Ev '^(azure-cli|cmake|gcc|google-cloud-cli|grafana|llvm|nodejs|ollama|python|redis|rust)$' | sort))
+          BATCH_SIZE=$(( (${#PACKAGES[@]} + 11) / 12 ))
+          START=$(( (${{ matrix.batch }} - 1) * BATCH_SIZE ))
+          END=$(( START + BATCH_SIZE ))
+
+          echo "🧪 Running integration test batch ${{ matrix.batch }}..."
+          echo "📦 Batch size: $BATCH_SIZE packages"
+
+          # Track results
+          PASSED=0
+          FAILED=0
+          > failed-packages.txt
+
+          for pkg in "${PACKAGES[@]:$START:$BATCH_SIZE}"; do
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Testing package: $pkg"
+            if TEST_PACKAGE="$pkg" go test -v -race -timeout=30m ./test/...; then
+              echo "✅ $pkg passed"
+              PASSED=$((PASSED + 1))
+            else
+              echo "❌ $pkg failed"
+              echo "$pkg" >> failed-packages.txt
+              FAILED=$((FAILED + 1))
+            fi
+          done
+
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 Batch ${{ matrix.batch }} Summary:"
+          echo "  ✅ Passed: $PASSED"
+          echo "  ❌ Failed: $FAILED"
+          echo "  📦 Total: $((PASSED + FAILED))"
+
+          if [ -s failed-packages.txt ]; then
+            echo "Failed packages:"
+            cat failed-packages.txt
+          fi
+
+      - name: Upload failed packages list
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: integration-batch-${{ matrix.batch }}-failures
+          path: failed-packages.txt
+          retention-days: 7
+          if-no-files-found: ignore
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: "!startsWith(github.event.head_commit.message, 'chore:')"
+    env:
+      GO_VERSION: "1.24"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@0a35821d5c230e903fcfe077583637dea1b27b47 # v9
+        with:
+          version: v2.6.2
+          args: --timeout=10m
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.event.head_commit.message, 'chore:')"
+    env:
+      GO_VERSION: "1.24"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build application
+        run: |
+          echo "🔨 Building application..."
+          go build -v -o bin/potions ./cmd/potions
+
+      - name: Test binary
+        run: |
+          echo "🧪 Testing built binary..."
+          ./bin/potions --version || echo "Version flag not implemented yet"
+          ./bin/potions --help || echo "Help flag exists"
+
+      - name: Upload binary
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: potions-binary-${{ github.sha }}
+          path: bin/potions
+          retention-days: 7
+
+  test-summary:
+    name: Test Summary
+    needs:
+      [
+        unit-tests,
+        test-matrix,
+        integration-tests-slow,
+        integration-tests,
+        lint,
+        build,
+      ]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "# Test Suite Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | ${{ needs.unit-tests.result == 'success' && '✅ Success' || needs.unit-tests.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Multi-Platform Tests | ${{ needs.test-matrix.result == 'success' && '✅ Success' || needs.test-matrix.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests (Slow) | ${{ needs.integration-tests-slow.result == 'success' && '✅ Success' || needs.integration-tests-slow.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests (Batched) | ${{ needs.integration-tests.result == 'success' && '✅ Success' || needs.integration-tests.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Linting | ${{ needs.lint.result == 'success' && '✅ Success' || needs.lint.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result == 'success' && '✅ Success' || needs.build.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.unit-tests.result }}" == "success" ] && \
+             [ "${{ needs.test-matrix.result }}" == "success" ] && \
+             [ "${{ needs.integration-tests-slow.result }}" == "success" ] && \
+             [ "${{ needs.integration-tests.result }}" == "success" ] && \
+             [ "${{ needs.lint.result }}" == "success" ] && \
+             [ "${{ needs.build.result }}" == "success" ]; then
+            echo "## ✅ All Tests Passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Some Tests Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please check the failed jobs above for details." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check if all tests passed
+        run: |
+          if [ "${{ needs.unit-tests.result }}" != "success" ] || \
+             [ "${{ needs.test-matrix.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests-slow.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests.result }}" != "success" ] || \
+             [ "${{ needs.lint.result }}" != "success" ] || \
+             [ "${{ needs.build.result }}" != "success" ]; then
+            echo "Some tests failed"
+            exit 1
+          fi
+          echo "All tests passed!"

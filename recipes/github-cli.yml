@@ -1,0 +1,37 @@
+name: github-cli
+version:
+  source: "github-release:cli/cli"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "GitHub CLI"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/cli/cli/releases/download/v{version}/gh_{version}_{suffix}"
+  platforms:
+    darwin-x86_64:
+      suffix: "macOS_amd64.zip"
+    darwin-arm64:
+      suffix: "macOS_arm64.zip"
+    linux-amd64:
+      suffix: "linux_amd64.tar.gz"
+    linux-arm64:
+      suffix: "linux_arm64.tar.gz"
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract tarball
+    true
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    cp bin/gh $PREFIX/bin/
+
+dependencies: []

@@ -1,0 +1,35 @@
+name: async-profiler
+description: Low-overhead sampling profiler for Java - production-ready performance analysis
+version:
+  source: "github-release:async-profiler/async-profiler"
+  extract_pattern: '[0-9]+\.[0-9]+'
+
+build_type: custom
+
+download:
+  official_binary: true
+  download_url: "https://github.com/async-profiler/async-profiler/releases/download/v{version}/async-profiler-{version}-{os}.{suffix}"
+  platforms:
+    darwin-arm64:
+      os: "macos"
+      suffix: "zip"
+    darwin-x86_64:
+      os: "macos"
+      suffix: "zip"
+    linux-amd64:
+      os: "linux-x64"
+      suffix: "tar.gz"
+    linux-arm64:
+      os: "linux-arm64"
+      suffix: "tar.gz"
+
+configure:
+  script: |
+    # No additional configuration needed - downloader handles extraction
+
+build:
+  custom_install: |
+    mkdir -p $PREFIX/bin $PREFIX/lib
+    cp bin/asprof $PREFIX/bin/ || true
+    cp lib/*.so $PREFIX/lib/ || true
+    cp lib/*.dylib $PREFIX/lib/ || true

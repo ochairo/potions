@@ -1,0 +1,36 @@
+name: istioctl
+version:
+  source: "github-release:istio/istio"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+build_type: custom
+description: "Istio service mesh CLI"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/istio/istio/releases/download/{version}/istioctl-{version}-{suffix}.tar.gz"
+  platforms:
+    darwin-x86_64:
+      suffix: "osx"
+    darwin-arm64:
+      suffix: "osx-arm64"
+    linux-amd64:
+      suffix: "linux-amd64"
+    linux-arm64:
+      suffix: "linux-arm64"
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract tarball
+    true
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    cp istioctl $PREFIX/bin/
+
+dependencies: []

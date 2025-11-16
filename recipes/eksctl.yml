@@ -1,0 +1,37 @@
+name: eksctl
+version:
+  source: "github-release:weaveworks/eksctl"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "CLI for Amazon EKS"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/eksctl-io/eksctl/releases/download/v{version}/eksctl_{suffix}"
+  platforms:
+    darwin-x86_64:
+      suffix: "Darwin_amd64.tar.gz"
+    darwin-arm64:
+      suffix: "Darwin_arm64.tar.gz"
+    linux-amd64:
+      suffix: "Linux_amd64.tar.gz"
+    linux-arm64:
+      suffix: "Linux_arm64.tar.gz"
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract tarball
+    true
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    cp eksctl $PREFIX/bin/
+
+dependencies: []

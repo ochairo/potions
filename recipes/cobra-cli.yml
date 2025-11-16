@@ -1,0 +1,41 @@
+name: cobra-cli
+version:
+  source: "github-release:spf13/cobra-cli"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "Generator for Cobra based CLI applications - scaffold modern Go CLI apps"
+
+download:
+  official_binary: false
+  download_url: "https://github.com/spf13/cobra-cli/archive/refs/tags/v{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Set up Go build cache
+    export GOCACHE="$PWD/.cache/go-build"
+    export GOMODCACHE="$PWD/.cache/go-mod"
+    mkdir -p "$GOCACHE" "$GOMODCACHE"
+
+build:
+  timeout_minutes: 2
+  out_of_tree: false
+  custom_install: |
+    export GOCACHE="$PWD/.cache/go-build"
+    export GOMODCACHE="$PWD/.cache/go-mod"
+    go build -o cobra-cli .
+    mkdir -p $PREFIX/bin
+    cp cobra-cli $PREFIX/bin/
+    chmod +x $PREFIX/bin/cobra-cli
+
+dependencies:
+  - go

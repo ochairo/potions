@@ -1,0 +1,39 @@
+name: golangci-lint
+version:
+  source: "github-release:golangci/golangci-lint"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "Fast linters runner for Go - runs linters in parallel, uses caching, supports YAML config"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/golangci/golangci-lint/releases/download/v{version}/golangci-lint-{version}-{suffix}.tar.gz"
+  platforms:
+    darwin-x86_64:
+      suffix: "darwin-amd64"
+    darwin-arm64:
+      suffix: "darwin-arm64"
+    linux-amd64:
+      suffix: "linux-amd64"
+    linux-arm64:
+      suffix: "linux-arm64"
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # golangci-lint is a prebuilt binary
+    true
+
+build:
+  timeout_minutes: 2
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    cp golangci-lint $PREFIX/bin/
+    chmod +x $PREFIX/bin/golangci-lint
+
+dependencies: []

@@ -1,0 +1,27 @@
+name: findutils
+version:
+  source: "url:https://mirrors.kernel.org/gnu/findutils/"
+  extract_pattern: 'findutils-([0-9]+\.[0-9]+(?:\.[0-9]+)?)\.tar'
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+build_type: gnu_autotools
+description: "GNU find, xargs, and locate utilities"
+
+download:
+  download_url: "https://mirrors.kernel.org/gnu/findutils/findutils-{version}.tar.xz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--program-prefix=g"
+
+build:
+  timeout_minutes: 15
+  out_of_tree: false
+
+dependencies: []

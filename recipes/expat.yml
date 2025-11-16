@@ -1,0 +1,36 @@
+name: expat
+version:
+  source: "github-release:libexpat/libexpat"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "R_[0-9_]+"
+  cleanup: "s/R_//g;s/_/./g"
+build_type: gnu_autotools
+description: "XML parser library written in C"
+
+download:
+  download_url: "https://github.com/libexpat/libexpat/releases/download/R_2_7_3/expat-2.7.3.tar.bz2"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags:
+    - --prefix=$PREFIX
+    - --disable-static
+    - --enable-shared
+    - --without-xmlwf
+    - --without-examples
+    - --without-tests
+
+build:
+  timeout_minutes: 10
+  out_of_tree: false
+
+dependencies:
+  - make
+  - gcc

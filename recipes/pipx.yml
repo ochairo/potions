@@ -1,0 +1,32 @@
+name: pipx
+version:
+  source: "github-release:pypa/pipx"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+build_type: custom
+description: "Install and run Python applications in isolated environments"
+
+download:
+  download_url: "https://github.com/pypa/pipx/archive/refs/tags/{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Python package, no build needed
+    true
+
+build:
+  timeout_minutes: 5
+  out_of_tree: false
+  custom_install: |
+    cd pipx-*
+    python3 -m pip install --prefix=$PREFIX .
+
+dependencies:
+  - python

@@ -1,0 +1,20 @@
+name: libffi
+version:
+  source: "github-release:libffi/libffi"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: gnu_autotools
+description: "Foreign Function Interface library"
+download:
+  download_url: "https://github.com/libffi/libffi/releases/download/v{version}/libffi-{version}.tar.gz"
+  mirror: "https://github.com/libffi/libffi/releases/download/v{version}/libffi-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+configure:
+  flags: ""
+build:
+  timeout_minutes: 30
+dependencies: []

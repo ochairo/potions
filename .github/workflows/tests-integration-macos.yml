@@ -1,0 +1,214 @@
+name: Tests - Integration (macOS)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Top-level permissions: read-all for security
+permissions: read-all
+
+# Prevent multiple test runs for same branch
+concurrency:
+  group: tests-macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration-tests-slow-macos:
+    name: Integration Tests (Slow - ${{ matrix.package }} on macOS)
+    runs-on: macos-latest
+    if: "!startsWith(github.event.head_commit.message, 'chore:')"
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          [
+            azure-cli,
+            cmake,
+            google-cloud-cli,
+            grafana,
+            llvm,
+            nodejs,
+            ollama,
+            rust,
+          ]
+    env:
+      GO_VERSION: "1.24"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install system dependencies
+        run: |
+          for attempt in {1..3}; do
+            if brew install gpgme libgpg-error 2>&1 | grep -v "already installed"; then
+              echo "✅ Dependencies installed"
+              break
+            fi
+            if [ $attempt -lt 3 ]; then
+              brew update || true
+              sleep 10
+            else
+              exit 1
+            fi
+          done
+
+      - name: Run slow package test
+        env:
+          TEST_PACKAGE: ${{ matrix.package }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TIMEOUT="60m"
+          if [[ "${{ matrix.package }}" == "llvm" ]]; then
+            TIMEOUT="480m"
+          elif [[ "${{ matrix.package }}" == "cmake" ]] || [[ "${{ matrix.package }}" == "google-cloud-cli" ]] || [[ "${{ matrix.package }}" == "grafana" ]]; then
+            TIMEOUT="90m"
+          elif [[ "${{ matrix.package }}" == "rust" ]] || [[ "${{ matrix.package }}" == "nodejs" ]]; then
+            TIMEOUT="90m"
+          elif [[ "${{ matrix.package }}" == "ollama" ]]; then
+            TIMEOUT="120m"
+          fi
+          # azure-cli uses default 60m timeout
+          echo "🧪 Testing slow package: ${{ matrix.package }} (timeout: $TIMEOUT)..."
+
+          START_TIME=$(date +%s)
+          if go test -v -race -timeout=$TIMEOUT ./test/...; then
+            END_TIME=$(date +%s)
+            DURATION=$((END_TIME - START_TIME))
+            echo "✅ ${{ matrix.package }} passed in ${DURATION}s"
+          else
+            END_TIME=$(date +%s)
+            DURATION=$((END_TIME - START_TIME))
+            echo "❌ ${{ matrix.package }} failed after ${DURATION}s"
+            exit 1
+          fi
+
+  integration-tests-macos:
+    name: Integration Tests (Batch ${{ matrix.batch }} on macOS)
+    runs-on: macos-latest
+    if: "!startsWith(github.event.head_commit.message, 'chore:')"
+    strategy:
+      fail-fast: false
+      matrix:
+        batch: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    env:
+      GO_VERSION: "1.24"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install system dependencies
+        run: |
+          for attempt in {1..3}; do
+            if brew install gpgme libgpg-error 2>&1 | grep -v "already installed"; then
+              echo "✅ Dependencies installed"
+              break
+            fi
+            if [ $attempt -lt 3 ]; then
+              brew update || true
+              sleep 10
+            else
+              exit 1
+            fi
+          done
+
+      - name: Run integration tests batch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get all packages dynamically (excluding slow packages >5 min)
+          PACKAGES=($(ls recipes/*.yml | xargs -n1 basename | sed 's/.yml$//' | grep -Ev '^(azure-cli|cmake|google-cloud-cli|grafana|llvm|nodejs|ollama|rust)$' | sort))
+          BATCH_SIZE=$(( (${#PACKAGES[@]} + 11) / 12 ))
+          START=$(( (${{ matrix.batch }} - 1) * BATCH_SIZE ))
+          END=$(( START + BATCH_SIZE ))
+
+          echo "🧪 Running integration test batch ${{ matrix.batch }} on macOS..."
+          echo "📦 Batch size: $BATCH_SIZE packages"
+
+          # Track results
+          PASSED=0
+          FAILED=0
+          > failed-packages.txt
+
+          for pkg in "${PACKAGES[@]:$START:$BATCH_SIZE}"; do
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Testing package: $pkg"
+            if TEST_PACKAGE="$pkg" go test -v -race -timeout=30m ./test/...; then
+              echo "✅ $pkg passed"
+              PASSED=$((PASSED + 1))
+            else
+              echo "❌ $pkg failed"
+              echo "$pkg" >> failed-packages.txt
+              FAILED=$((FAILED + 1))
+            fi
+          done
+
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 Batch ${{ matrix.batch }} Summary:"
+          echo "  ✅ Passed: $PASSED"
+          echo "  ❌ Failed: $FAILED"
+          echo "  📦 Total: $((PASSED + FAILED))"
+
+          if [ -s failed-packages.txt ]; then
+            echo "Failed packages:"
+            cat failed-packages.txt
+          fi
+
+      - name: Upload failed packages list
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: integration-macos-batch-${{ matrix.batch }}-failures
+          path: failed-packages.txt
+          retention-days: 7
+          if-no-files-found: ignore
+
+  test-summary-macos:
+    name: Test Summary (macOS)
+    needs: [integration-tests-slow-macos, integration-tests-macos]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "# macOS Test Suite Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests (Slow) | ${{ needs.integration-tests-slow-macos.result == 'success' && '✅ Success' || needs.integration-tests-slow-macos.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests (Batched) | ${{ needs.integration-tests-macos.result == 'success' && '✅ Success' || needs.integration-tests-macos.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.integration-tests-slow-macos.result }}" == "success" ] && \
+             [ "${{ needs.integration-tests-macos.result }}" == "success" ]; then
+            echo "## ✅ All macOS Tests Passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Some macOS Tests Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please check the failed jobs above for details." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check if all tests passed
+        run: |
+          if [ "${{ needs.integration-tests-slow-macos.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests-macos.result }}" != "success" ]; then
+            echo "Some macOS tests failed"
+            exit 1
+          fi
+          echo "All macOS tests passed!"

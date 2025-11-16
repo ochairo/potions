@@ -1,0 +1,61 @@
+{
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "vscode.markdown-language-features"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml"
+  },
+  "cSpell.import": [
+    "./.vscode/cspell.json"
+  ],
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "editor.detectIndentation": true,
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true,
+  "editor.insertSpaces": true,
+  "editor.rulers": [
+    120
+  ],
+  "editor.tabSize": 2,
+  "editor.trimAutoWhitespace": true,
+  "editor.wordWrap": "wordWrapColumn",
+  "editor.wordWrapColumn": 120,
+  "explorer.confirmDelete": false,
+  "explorer.confirmDragAndDrop": false,
+  "explorer.sortOrder": "type",
+  "files.encoding": "utf8",
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+  "gitlens.codeLens.enabled": true,
+  "gitlens.currentLine.enabled": true,
+  "gitlens.hovers.currentLine.over": "line",
+  "terminal.integrated.cwd": "${workspaceFolder}",
+  "terminal.integrated.fontFamily": "MesloLGS NF, Monaco, 'Courier New', monospace",
+  "terminal.integrated.fontSize": 14,
+  "workbench.editor.enablePreview": false,
+  "workbench.editor.enablePreviewFromQuickOpen": false,
+  "workbench.startupEditor": "readme",
+  "git.ignoreLimitWarning": true,
+  "yaml.schemas": {
+    ".vscode/recipes.schema.json": "recipes/*.yml"
+  },
+  "yaml.validate": true,
+  "yaml.schemaStore.enable": true,
+  "yaml.customTags": [],
+  "files.associations": {
+    ".golangci.yml": "yaml"
+  },
+  "[.golangci.yml]": {
+    "yaml.validate": false
+  }
+}

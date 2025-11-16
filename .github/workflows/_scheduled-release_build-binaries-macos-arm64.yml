@@ -1,0 +1,143 @@
+name: "_Scheduled Release - Build Binaries macOS ARM64"
+
+on:
+  workflow_call:
+    inputs:
+      batches:
+        description: "JSON array of batches to build"
+        required: true
+        type: string
+
+# Top-level permissions: read-all for security
+permissions: read-all
+
+jobs:
+  build-binaries-macos-arm64:
+    name: Build Binaries (macOS ARM64)
+    runs-on: macos-latest
+    timeout-minutes: 360
+    env:
+      GO_VERSION: "1.24"
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        batch: ${{ fromJson(inputs.batches) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Install system dependencies
+        run: |
+          # Retry logic for brew in case of transient failures
+          for attempt in {1..3}; do
+            if brew install gpgme libgpg-error 2>&1 | grep -v "already installed"; then
+              echo "✅ Dependencies installed"
+              break
+            fi
+            if [ $attempt -lt 3 ]; then
+              echo "⚠️  Attempt $attempt failed, retrying in 10s..."
+              brew update || true
+              sleep 10
+            else
+              echo "❌ Failed to install dependencies after 3 attempts"
+              exit 1
+            fi
+          done
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Check available disk space
+        run: |
+          echo "📊 Available disk space:"
+          df -h
+          echo ""
+          echo "📊 Free memory:"
+          vm_stat | perl -ne '/page size of (\d+)/ and $size=$1; /Pages\s+([^:]+)[^\d]+(\d+)/ and printf("%16s: %8.2f MB\n", "$1", $2 * $size / 1048576);'
+
+      - name: Build potions CLI
+        run: |
+          go build -v -o bin/potions ./cmd/potions
+          chmod +x bin/potions
+          echo "📦 potions CLI built: $(./bin/potions --version 2>&1 || echo 'version unknown')"
+
+      - name: Build all packages in batch (macOS ARM64 only)
+        run: |
+          ./bin/potions build \
+            --packages '${{ toJson(matrix.batch.packages) }}' \
+            --platform darwin-arm64 \
+            --recipes-dir recipes \
+            --output-dir dist \
+            --enable-security-scan \
+            --timeout 20 \
+            --successes build-successes.txt \
+            --failures build-failures.txt \
+            --timeouts build-failures-timeout.txt \
+            --errors build-failures-error.txt
+
+      - name: Upload build failures report
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: macos-arm64-batch-${{ matrix.batch.id }}-failures
+          path: |
+            build-failures.txt
+            build-failures-timeout.txt
+            build-failures-error.txt
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Check for artifacts
+        id: check-artifacts
+        run: |
+          if [ -n "$(find dist -name '*.tar.gz' -type f 2>/dev/null)" ]; then
+            echo "has-artifacts=true" >> $GITHUB_OUTPUT
+
+            # Calculate total artifact size
+            TOTAL_SIZE=$(du -sh dist 2>/dev/null | cut -f1)
+            ARTIFACT_COUNT=$(find dist -name '*.tar.gz' -type f 2>/dev/null | wc -l | tr -d ' ')
+            echo "📊 Artifacts: $ARTIFACT_COUNT files, Total size: $TOTAL_SIZE"
+
+            # Check for unusually large artifacts (>500MB warning)
+            find dist -name '*.tar.gz' -type f -size +500M 2>/dev/null | while read large_file; do
+              FILE_SIZE=$(du -h "$large_file" | cut -f1)
+              echo "⚠️  Large artifact detected: $(basename "$large_file") ($FILE_SIZE)"
+            done
+          else
+            echo "has-artifacts=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No artifacts produced for this batch (likely custom build types)"
+          fi
+
+      - name: Upload artifacts
+        if: success() && steps.check-artifacts.outputs.has-artifacts == 'true'
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: macos-arm64-batch-${{ matrix.batch.id }}-builds
+          path: |
+            dist/**/*.tar.gz
+            dist/**/*.sha256
+            dist/**/*.sha512
+            dist/**/*.sbom.json
+            dist/**/*.provenance.json
+          retention-days: 7
+
+      - name: Upload build completion marker
+        if: success() && steps.check-artifacts.outputs.has-artifacts == 'true'
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: macos-arm64-batch-${{ matrix.batch.id }}-complete
+          path: build-successes.txt
+          retention-days: 1
+
+      - name: Cleanup build artifacts
+        if: always()
+        run: |
+          echo "🧹 Cleaning up build directory..."
+          rm -rf dist
+          echo "📊 Final disk space:"
+          df -h

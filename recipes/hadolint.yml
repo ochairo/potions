@@ -1,0 +1,38 @@
+name: hadolint
+version:
+  source: "github-release:hadolint/hadolint"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "Dockerfile linter"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/hadolint/hadolint/releases/download/v{version}/hadolint-{suffix}"
+  platforms:
+    darwin-x86_64:
+      suffix: "macos-x86_64"
+    darwin-arm64:
+      suffix: "macos-arm64"
+    linux-amd64:
+      suffix: "linux-x86_64"
+    linux-arm64:
+      suffix: "linux-arm64"
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Binary download
+    true
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    chmod +x hadolint-*
+    mkdir -p $PREFIX/bin
+    cp hadolint-* $PREFIX/bin/hadolint
+
+dependencies: []

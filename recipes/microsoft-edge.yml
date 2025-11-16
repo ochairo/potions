@@ -1,0 +1,52 @@
+name: microsoft-edge
+version:
+  source: "url:https://packages.microsoft.com/repos/edge/pool/main/m/microsoft-edge-stable/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|weekly|daily)"
+  extract_pattern: 'microsoft-edge-stable_([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)-1_amd64\.deb'
+build_type: custom
+description: "Microsoft Edge web browser"
+
+download:
+  official_binary: true
+  download_url: "https://packages.microsoft.com/repos/edge/pool/main/m/microsoft-edge-stable/microsoft-edge-stable_{version}-1_amd64.deb"
+  platforms:
+    linux-amd64:
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract package
+    case "$(uname -s)" in
+      Darwin*)
+        echo "Extracting PKG..."
+        ;;
+      *)
+        ar x microsoft-edge-stable_*.deb
+        tar xf data.tar.xz
+        ;;
+    esac
+
+build:
+  timeout_minutes: 5
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    case "$(uname -s)" in
+      Darwin*)
+        # Extract PKG contents
+        pkgutil --expand MicrosoftEdge-*.pkg expanded
+        tar xf expanded/msedge.pkg/Payload -C .
+        mkdir -p $PREFIX/Applications
+        cp -r "Microsoft Edge.app" $PREFIX/Applications/
+        ln -sf "$PREFIX/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" $PREFIX/bin/edge
+        ;;
+      *)
+        mkdir -p $PREFIX/lib/microsoft-edge
+        cp -r opt/microsoft/msedge/* $PREFIX/lib/microsoft-edge/
+        ln -sf $PREFIX/lib/microsoft-edge/microsoft-edge $PREFIX/bin/edge
+        ;;
+    esac
+
+dependencies: []

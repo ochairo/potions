@@ -1,0 +1,266 @@
+name: "_Scheduled Release - Detect Package Updates"
+
+on:
+  workflow_call:
+    inputs:
+      package:
+        description: "Package to build and release (leave empty for all monitored packages)"
+        required: false
+        type: string
+      version:
+        description: "Specific version to build (leave empty for latest)"
+        required: false
+        type: string
+    outputs:
+      packages:
+        description: "JSON array of packages with updates"
+        value: ${{ jobs.detect-updates.outputs.packages }}
+      batches:
+        description: "JSON array of batches for matrix strategy"
+        value: ${{ jobs.detect-updates.outputs.batches }}
+      has-updates:
+        description: "Boolean indicating if there are any updates"
+        value: ${{ jobs.detect-updates.outputs.has-updates }}
+    secrets:
+      GH_TOKEN:
+        required: true
+
+# Top-level permissions: read-all for security
+permissions: read-all
+
+jobs:
+  detect-updates:
+    name: Detect Package Updates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GO_VERSION: "1.24"
+    outputs:
+      packages: ${{ steps.monitor.outputs.packages }}
+      batches: ${{ steps.split-packages.outputs.batches }}
+      has-updates: ${{ steps.split-packages.outputs.has-updates }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build potions CLI
+        run: |
+          go build -v -o bin/potions ./cmd/potions
+          chmod +x bin/potions
+
+      - name: Monitor for updates
+        id: monitor
+        run: |
+          PACKAGE_INPUT="${{ inputs.package }}"
+          VERSION_INPUT="${{ inputs.version }}"
+
+          if [ -n "$PACKAGE_INPUT" ] && [ "$PACKAGE_INPUT" != "" ]; then
+            # Manual trigger with specific package
+            # Validate package exists
+            if [ ! -f "recipes/${PACKAGE_INPUT}.yml" ]; then
+              echo "❌ Error: Package definition not found for '$PACKAGE_INPUT'"
+              echo "packages=[]" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+
+            # Get version - use input version if provided, otherwise get latest
+            if [ -n "$VERSION_INPUT" ] && [ "$VERSION_INPUT" != "" ]; then
+              VERSION="$VERSION_INPUT"
+              echo "📦 Manual run: building $PACKAGE_INPUT v$VERSION (user-specified version)"
+            else:
+              # Get latest version from monitor
+              export GITHUB_TOKEN="${{ secrets.GH_TOKEN }}"
+              VERSION=$(./bin/potions monitor --json=true "$PACKAGE_INPUT" | jq -r '.[0].latest_version')
+              unset GITHUB_TOKEN
+
+              if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+                echo "❌ Error: Could not determine version for '$PACKAGE_INPUT'"
+                echo "packages=[]" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+
+              echo "📦 Manual run: building $PACKAGE_INPUT v$VERSION (latest)"
+            fi
+
+            # Output as object array to match automatic mode
+            PACKAGES=$(jq -n --arg pkg "$PACKAGE_INPUT" --arg ver "$VERSION" '[{package: $pkg, version: $ver}]')
+            echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
+          else
+            # Scheduled or manual without package: discover all packages from definitions
+            echo "🔍 Discovering packages from definitions directory..."
+
+            # Get all package names from recipes/*.yml files
+            MONITORED_PACKAGES=$(ls recipes/*.yml 2>/dev/null | xargs -n1 basename | sed 's/\.yml$//' | tr '\n' ' ' | sed 's/ $//')
+
+            if [ -z "$MONITORED_PACKAGES" ]; then
+              echo "⚠️  Warning: No package definitions found in recipes/"
+              echo "packages=[]" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            echo "📦 Found packages: $MONITORED_PACKAGES"
+
+            # Verify GitHub token is available
+            if [ -z "${{ secrets.GH_TOKEN }}" ]; then
+              echo "⚠️  Warning: GITHUB_TOKEN not available, may hit rate limits"
+            fi
+
+            # Run monitor command to check for updates (allow partial failures)
+            # Note: GITHUB_TOKEN is passed via environment to avoid shell command logging
+            set +e  # Temporarily disable exit on error to capture output
+            export GITHUB_TOKEN="${{ secrets.GH_TOKEN }}"
+            timeout 300 ./bin/potions monitor --json=true $MONITORED_PACKAGES > updates.json 2>&1
+            MONITOR_EXIT_CODE=$?
+            unset GITHUB_TOKEN  # Clear token from environment
+            set -e  # Re-enable exit on error
+
+            # Show monitor output for debugging
+            echo "Monitor command exit code: $MONITOR_EXIT_CODE"
+
+            if [ $MONITOR_EXIT_CODE -eq 124 ]; then
+              echo "⚠️  Monitor command timed out after 5 minutes"
+              echo "packages=[]" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+
+            if [ -f updates.json ]; then
+              echo "Monitor output (first 50 lines):"
+              head -50 updates.json
+            fi
+
+            # Check if we got valid JSON output
+            if [ ! -f updates.json ] || ! jq empty updates.json 2>/dev/null; then
+              echo "❌ Error: Monitor command failed to produce valid JSON (exit code: $MONITOR_EXIT_CODE)"
+              echo "Output:"
+              cat updates.json 2>/dev/null || echo "(no output file)"
+              echo "packages=[]" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+
+            # Show any errors but continue processing valid packages
+            ERROR_COUNT=$(cat updates.json | jq '[.[] | select(.error != null)] | length')
+            if [ "$ERROR_COUNT" -gt 0 ]; then
+              echo "⚠️  $ERROR_COUNT packages had errors during monitoring:"
+              cat updates.json | jq -r '.[] | select(.error != null) | "  ❌ \(.package): \(.error)"'
+            fi
+
+            # Extract packages that need updates (excluding those with errors) with their versions
+            PACKAGES=$(cat updates.json | jq -r '[.[] | select(.update_needed == true and .error == null) | {package: .package, version: .latest_version}] | @json')
+            echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
+
+            if [ "$PACKAGES" = "[]" ] || [ -z "$PACKAGES" ]; then
+              echo "ℹ️  No updates found for any monitored packages"
+            else
+              PACKAGE_COUNT=$(echo "$PACKAGES" | jq -r 'length')
+              echo "🔍 Found $PACKAGE_COUNT package(s) with updates:"
+              cat updates.json | jq -r '.[] | select(.update_needed == true and .error == null) | "  ✅ \(.package): \(.latest_version)"'
+            fi
+          fi
+
+      - name: Upload monitor results
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: monitor-results
+          path: updates.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Split packages into batches
+        id: split-packages
+        run: |
+          PACKAGES='${{ steps.monitor.outputs.packages }}'
+
+          # Validate packages output
+          if [ -z "$PACKAGES" ] || [ "$PACKAGES" = "null" ]; then
+            echo "⚠️  Warning: packages output is empty or null"
+            echo "batches=[]" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          if [ "$PACKAGES" = "[]" ]; then
+            echo "ℹ️  No packages to batch"
+            echo "batches=[]" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Validate JSON format
+          if ! echo "$PACKAGES" | jq empty 2>/dev/null; then
+            echo "❌ Error: Invalid JSON in packages output"
+            echo "Packages value: $PACKAGES"
+            echo "batches=[]" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          PACKAGE_COUNT=$(echo "$PACKAGES" | jq -r 'length')
+
+          # Dynamic batching strategy:
+          # - Small jobs (1-10 packages): 1-2 batches (minimal overhead)
+          # - Medium jobs (11-30 packages): 3-6 batches (balanced)
+          # - Large jobs (31-100 packages): 8-20 batches (good parallelism)
+          # - Very large jobs (100+ packages): up to 60 batches (max efficiency)
+          # GitHub Actions matrix limit: 256 jobs (2 OS × batches < 128)
+
+          if [ $PACKAGE_COUNT -le 10 ]; then
+            # 1-10 packages: minimal batching (1-2 batches)
+            PACKAGES_PER_BATCH=$(( (PACKAGE_COUNT + 1) / 2 ))
+          elif [ $PACKAGE_COUNT -le 30 ]; then
+            # 11-30 packages: 3-5 packages per batch
+            PACKAGES_PER_BATCH=5
+          elif [ $PACKAGE_COUNT -le 100 ]; then
+            # 31-100 packages: ~5-8 packages per batch
+            PACKAGES_PER_BATCH=6
+          else
+            # 100+ packages: ~10-15 packages per batch (up to 60 batches)
+            PACKAGES_PER_BATCH=$(( (PACKAGE_COUNT + 59) / 60 ))
+          fi
+
+          # Ensure at least 1 package per batch
+          if [ $PACKAGES_PER_BATCH -lt 1 ]; then
+            PACKAGES_PER_BATCH=1
+          fi
+
+          ESTIMATED_BATCHES=$(( (PACKAGE_COUNT + PACKAGES_PER_BATCH - 1) / PACKAGES_PER_BATCH ))
+
+          echo "📊 Dynamic Batching Strategy:"
+          echo "  - Total packages: $PACKAGE_COUNT"
+          echo "  - Packages per batch: $PACKAGES_PER_BATCH"
+          echo "  - Estimated batches: $ESTIMATED_BATCHES"
+          echo "  - Total jobs (Linux + macOS): $(( ESTIMATED_BATCHES * 2 ))"
+
+          # Create batches of packages
+          BATCHES="[]"
+          INDEX=0
+
+          while [ $INDEX -lt $PACKAGE_COUNT ]; do
+            BATCH=$(echo "$PACKAGES" | jq -c ".[$INDEX:$((INDEX + PACKAGES_PER_BATCH))]")
+            BATCH_NUM=$(( INDEX / PACKAGES_PER_BATCH ))
+
+            # Add batch with metadata
+            BATCHES=$(echo "$BATCHES" | jq -c ". += [{\"id\": $BATCH_NUM, \"packages\": $BATCH}]")
+
+            INDEX=$(( INDEX + PACKAGES_PER_BATCH ))
+          done
+
+          echo "batches=$BATCHES" >> $GITHUB_OUTPUT
+
+          BATCH_COUNT=$(echo "$BATCHES" | jq -r 'length')
+          echo "✅ Created $BATCH_COUNT batches"
+
+          # Set has-updates flag
+          if [ "$BATCH_COUNT" -gt 0 ]; then
+            echo "has-updates=true" >> $GITHUB_OUTPUT
+            echo "✅ Updates available: true"
+          else
+            echo "has-updates=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Updates available: false"
+          fi
+
+          # Show batch details
+          echo "$BATCHES" | jq -r '.[] | "  Batch \(.id): \(.packages | length) packages"'

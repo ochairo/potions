@@ -1,0 +1,30 @@
+name: llvm
+version:
+  source: "github-release:llvm/llvm-project"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'llvmorg-[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: 'llvmorg-:'
+build_type: cmake
+description: "LLVM Compiler Infrastructure"
+
+download:
+  download_url: "https://github.com/llvm/llvm-project/releases/download/llvmorg-{version}/llvm-project-{version}.src.tar.xz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+configure:
+  source_dir: "llvm"
+  flags: >-
+    -DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra;lld
+    -DLLVM_ENABLE_RUNTIMES=compiler-rt;libcxx;libcxxabi;libunwind
+    -DCMAKE_BUILD_TYPE=Release
+    -DLLVM_TARGETS_TO_BUILD=all
+
+build:
+  timeout_minutes: 480
+  out_of_tree: true
+
+dependencies:
+  - python

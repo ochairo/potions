@@ -1,0 +1,31 @@
+name: k6
+description: Modern load testing tool - JavaScript-based with beautiful reports
+version:
+  source: "github-release:grafana/k6"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+
+build_type: custom
+
+download:
+  official_binary: true
+  download_url: "https://github.com/grafana/k6/releases/download/v{version}/k6-v{version}-{suffix}"
+  platforms:
+    darwin-arm64:
+      suffix: "macos-arm64.zip"
+    darwin-x86_64:
+      suffix: "macos-amd64.zip"
+    linux-amd64:
+      suffix: "linux-amd64.tar.gz"
+    linux-arm64:
+      suffix: "linux-arm64.tar.gz"
+
+configure:
+  script: |
+    # Archive is already extracted by downloader
+    true
+
+build:
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    find . -name k6 -type f -exec cp {} $PREFIX/bin/k6 \;
+    chmod +x $PREFIX/bin/k6

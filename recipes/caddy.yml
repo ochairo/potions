@@ -1,0 +1,37 @@
+name: caddy
+version:
+  source: "github-release:caddyserver/caddy"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "Fast, multi-platform web server with automatic HTTPS"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/caddyserver/caddy/releases/download/v{version}/caddy_{version}_{suffix}"
+  platforms:
+    darwin-x86_64:
+      suffix: "mac_amd64.tar.gz"
+    darwin-arm64:
+      suffix: "mac_arm64.tar.gz"
+    linux-amd64:
+      suffix: "linux_amd64.tar.gz"
+    linux-arm64:
+      suffix: "linux_arm64.tar.gz"
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract tarball
+    true
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    cp caddy $PREFIX/bin/
+
+dependencies: []

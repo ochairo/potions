@@ -1,0 +1,43 @@
+name: terraform
+version:
+  source: "url:https://releases.hashicorp.com/terraform/"
+  extract_pattern: '/terraform/([0-9]+\.[0-9]+\.[0-9]+)/'
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+build_type: custom
+description: "Infrastructure as Code tool"
+
+download:
+  official_binary: true
+  download_url: "https://releases.hashicorp.com/terraform/{version}/terraform_{version}_{os}_{arch}.zip"
+  platforms:
+    darwin-x86_64:
+      os: "darwin"
+      arch: "amd64"
+    darwin-arm64:
+      os: "darwin"
+      arch: "arm64"
+    linux-amd64:
+      os: "linux"
+      arch: "amd64"
+    linux-arm64:
+      os: "linux"
+      arch: "arm64"
+security:
+  verify_signature: true
+  signature_url: "https://releases.hashicorp.com/terraform/{version}/terraform_{version}_SHA256SUMS.sig"
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Unzip binary
+    unzip terraform_*.zip
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    cp terraform $PREFIX/bin/
+
+dependencies:
+  - unzip

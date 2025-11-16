@@ -1,0 +1,50 @@
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Security-sensitive files
+*.key
+*.pem
+*.p12
+*.pfx
+*_rsa*
+*_dsa*
+*_ecdsa*
+*_ed25519*
+id_*
+known_hosts*
+authorized_keys*
+.ssh/
+.gnupg/
+.gpg
+*.asc
+*.sig
+
+# Build temp directory
+.build-temp/
+tests/temp/
+
+# Build artifacts
+*.tar.gz
+*.sha256
+*.sbom.json
+*.provenance.json
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store
+
+dist/
+
+*.sh
+test-dist/
+
+**/coverage.*
+
+# Go binaries
+bin/
+/potions
+
+test/*.*
+!test/*.go

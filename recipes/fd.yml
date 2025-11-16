@@ -1,0 +1,25 @@
+name: fd
+version:
+  source: "github-release:sharkdp/fd"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "Fast find alternative written in Rust"
+
+download:
+  official_binary: true
+  download_url_by_platform:
+    darwin-x86_64: "https://github.com/sharkdp/fd/releases/download/v{version}/fd-v{version}-x86_64-apple-darwin.tar.gz"
+    darwin-arm64: "https://github.com/sharkdp/fd/releases/download/v{version}/fd-v{version}-aarch64-apple-darwin.tar.gz"
+    linux-amd64: "https://github.com/sharkdp/fd/releases/download/v{version}/fd-v{version}-x86_64-unknown-linux-gnu.tar.gz"
+    linux-arm64: "https://github.com/sharkdp/fd/releases/download/v{version}/fd-v{version}-aarch64-unknown-linux-gnu.tar.gz"
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    find . -name 'fd' -type f -executable -exec cp -v {} "$PREFIX/bin/fd" \;

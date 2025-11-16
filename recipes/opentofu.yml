@@ -1,0 +1,43 @@
+name: opentofu
+version:
+  source: "github-release:opentofu/opentofu"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "Fork of Terraform that is open-source, community-driven, and managed by the Linux Foundation"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/opentofu/opentofu/releases/download/v{version}/tofu_{version}_{os}_{arch}.zip"
+  platforms:
+    darwin-x86_64:
+      os: "darwin"
+      arch: "amd64"
+    darwin-arm64:
+      os: "darwin"
+      arch: "arm64"
+    linux-amd64:
+      os: "linux"
+      arch: "amd64"
+    linux-arm64:
+      os: "linux"
+      arch: "arm64"
+security:
+  verify_signature: true
+  signature_url: "https://github.com/opentofu/opentofu/releases/download/v{version}/tofu_{version}_SHA256SUMS.sig"
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Unzip binary
+    unzip tofu_*.zip
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    cp tofu $PREFIX/bin/
+
+dependencies:
+  - unzip

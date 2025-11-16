@@ -1,0 +1,30 @@
+name: grpcurl
+description: Like curl, but for gRPC - command-line tool for interacting with gRPC servers
+version:
+  source: "github-release:fullstorydev/grpcurl"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+
+build_type: custom
+
+download:
+  official_binary: true
+  download_url: "https://github.com/fullstorydev/grpcurl/releases/download/v{version}/grpcurl_{version}_{suffix}.tar.gz"
+  platforms:
+    darwin-arm64:
+      suffix: "osx_arm64"
+    darwin-x86_64:
+      suffix: "osx_x86_64"
+    linux-amd64:
+      suffix: "linux_x86_64"
+    linux-arm64:
+      suffix: "linux_arm64"
+
+configure:
+  script: |
+    # grpcurl is a prebuilt binary in the tarball
+    chmod +x grpcurl
+
+build:
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    cp grpcurl $PREFIX/bin/

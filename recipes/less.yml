@@ -1,0 +1,29 @@
+name: less
+version:
+  source: "url:https://www.greenwoodsoftware.com/less/download.html"
+  extract_pattern: "less-[0-9]+"
+  cleanup: "s/less-//"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+build_type: gnu_autotools
+description: "Terminal pager program"
+
+download:
+  download_url: "https://www.greenwoodsoftware.com/less/less-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: ""
+
+build:
+  timeout_minutes: 5
+  out_of_tree: false
+
+dependencies:
+  - ncurses

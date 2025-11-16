@@ -1,0 +1,31 @@
+name: usql
+description: Universal command-line SQL client - like psql but for all databases (PostgreSQL, MySQL, SQLite, etc.)
+version:
+  source: "github-release:xo/usql"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+
+build_type: custom
+
+download:
+  official_binary: true
+  download_url: "https://github.com/xo/usql/releases/download/v{version}/usql-{version}-{suffix}.tar.bz2"
+  platforms:
+    darwin-arm64:
+      suffix: "darwin-arm64"
+    darwin-x86_64:
+      suffix: "darwin-amd64"
+    linux-amd64:
+      suffix: "linux-amd64"
+    linux-arm64:
+      suffix: "linux-arm64"
+
+configure:
+  script: |
+    # Extract tar.bz2 file
+    tar -xjf usql-*.tar.bz2
+
+build:
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    cp usql $PREFIX/bin/
+    chmod +x $PREFIX/bin/usql

@@ -1,0 +1,37 @@
+name: bat
+version:
+  source: "github-release:sharkdp/bat"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "Cat clone with syntax highlighting"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/sharkdp/bat/releases/download/v{version}/bat-v{version}-{suffix}.tar.gz"
+  platforms:
+    darwin-x86_64:
+      suffix: "x86_64-apple-darwin"
+    darwin-arm64:
+      suffix: "aarch64-apple-darwin"
+    linux-amd64:
+      suffix: "x86_64-unknown-linux-gnu"
+    linux-arm64:
+      suffix: "aarch64-unknown-linux-gnu"
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract tarball
+    true
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    cp bat $PREFIX/bin/
+
+dependencies: []

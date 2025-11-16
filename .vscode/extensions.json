@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "editorconfig.editorconfig", //              EditorConfig for VS Code
+    "redhat.vscode-yaml", //                     YAML Language Support
+    "streetsidesoftware.code-spell-checker", //  Code Spell Checker
+  ]
+}

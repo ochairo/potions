@@ -1,0 +1,42 @@
+name: ollama
+version:
+  source: "github-release:ollama/ollama"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+
+build_type: custom
+description: "Run large language models locally"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/ollama/ollama/releases/download/v{version}/ollama-{suffix}.tgz"
+  platforms:
+    darwin-x86_64:
+      suffix: "darwin"
+    darwin-arm64:
+      suffix: "darwin"
+    linux-amd64:
+      suffix: "linux-amd64"
+    linux-arm64:
+      suffix: "linux-arm64"
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Archive is already extracted by downloader
+    true
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    find . -name ollama -type f -exec chmod +x {} \;
+    find . -name ollama -type f -exec cp {} $PREFIX/bin/ollama \;
+    chmod +x $PREFIX/bin/ollama
+
+dependencies: []

@@ -1,0 +1,30 @@
+name: jq
+version:
+  source: "github-release:jqlang/jq"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+(?:\.[0-9]+)?'
+
+build_type: gnu_autotools
+description: "Command-line JSON processor"
+
+download:
+  download_url: "https://github.com/jqlang/jq/releases/download/jq-{version}/jq-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--disable-docs"
+
+build:
+  timeout_minutes: 10
+  out_of_tree: false
+
+dependencies: []

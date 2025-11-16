@@ -1,0 +1,39 @@
+name: kubeadm
+version:
+  source: "github-release:kubernetes/kubernetes"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'v([0-9]+\.[0-9]+\.[0-9]+)'
+
+build_type: custom
+description: "Tool built to provide kubeadm init and kubeadm join as best-practice fast paths"
+
+download:
+  official_binary: true
+  download_url: "https://dl.k8s.io/release/v{version}/bin/{os}/{arch}/kubeadm"
+  platforms:
+    linux-amd64:
+      os: "linux"
+      arch: "amd64"
+    linux-arm64:
+      os: "linux"
+      arch: "arm64"
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Binary download
+    true
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    chmod +x kubeadm
+    mkdir -p $PREFIX/bin
+    cp kubeadm $PREFIX/bin/
+
+dependencies: []

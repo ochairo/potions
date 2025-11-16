@@ -1,0 +1,36 @@
+name: lefthook
+description: Fast and powerful Git hooks manager written in Go
+version:
+  source: "github-release:evilmartians/lefthook"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+
+build_type: custom
+
+download:
+  official_binary: true
+  download_url: "https://github.com/evilmartians/lefthook/releases/download/v{version}/lefthook_{version}_{suffix}"
+  platforms:
+    darwin-arm64:
+      suffix: "MacOS_arm64"
+    darwin-x86_64:
+      suffix: "MacOS_x86_64"
+    linux-amd64:
+      suffix: "Linux_x86_64"
+    linux-arm64:
+      suffix: "Linux_arm64"
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # lefthook is downloaded as a single binary
+    chmod +x lefthook_*
+
+build:
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    cp lefthook_* $PREFIX/bin/lefthook
+    chmod +x $PREFIX/bin/lefthook

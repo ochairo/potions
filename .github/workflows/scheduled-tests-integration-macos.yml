@@ -1,0 +1,122 @@
+name: Tests - Integration (macOS - Daily Scheduled)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run full test suite daily at 18:00 UTC
+    - cron: "0 18 * * *"
+
+# Top-level permissions: read-all for security
+permissions: read-all
+
+# Prevent multiple test runs for same branch
+concurrency:
+  group: tests-macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration-tests-strategic-macos:
+    name: Integration Tests (Strategic - ${{ matrix.package }} on macOS)
+    runs-on: macos-latest
+    if: "!startsWith(github.event.head_commit.message, 'chore:')"
+    strategy:
+      fail-fast: false
+      matrix:
+        # Strategic macOS package selection (subset of Linux for faster CI)
+        package:
+          [biome, bun, curl, git, docker, golang, python, kubectl, helm, grype]
+    env:
+      GO_VERSION: "1.24"
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install system dependencies
+        run: |
+          for attempt in {1..3}; do
+            if brew install gpgme libgpg-error 2>&1 | grep -v "already installed"; then
+              echo "✅ Dependencies installed"
+              break
+            fi
+            if [ $attempt -lt 3 ]; then
+              brew update || true
+              sleep 10
+            else
+              exit 1
+            fi
+          done
+
+      - name: Run strategic package test
+        env:
+          TEST_PACKAGE: ${{ matrix.package }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Set timeout based on package complexity
+          TIMEOUT="30m"
+          if [[ "${{ matrix.package }}" =~ ^(python|nodejs|golang)$ ]]; then
+            TIMEOUT="60m"
+          elif [[ "${{ matrix.package }}" =~ ^(docker|podman)$ ]]; then
+            TIMEOUT="40m"
+          fi
+          # Custom builds, K8s tools, security tools use default 30m timeout
+          echo "🧪 Testing strategic package: ${{ matrix.package }} (timeout: $TIMEOUT)..."
+
+          START_TIME=$(date +%s)
+          if go test -v -timeout=$TIMEOUT ./test/...; then
+            END_TIME=$(date +%s)
+            DURATION=$((END_TIME - START_TIME))
+            echo "✅ ${{ matrix.package }} passed in ${DURATION}s"
+          else
+            END_TIME=$(date +%s)
+            DURATION=$((END_TIME - START_TIME))
+            echo "❌ ${{ matrix.package }} failed after ${DURATION}s"
+            exit 1
+          fi
+
+  test-summary-macos:
+    name: Test Summary (macOS)
+    needs: [integration-tests-strategic-macos]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "# macOS Test Suite Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests (Strategic) | ${{ needs.integration-tests-strategic-macos.result == 'success' && '✅ Success' || needs.integration-tests-strategic-macos.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.integration-tests-strategic-macos.result }}" == "success" ]; then
+            echo "## ✅ All macOS Tests Passed!" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.integration-tests-strategic-macos.result }}" == "skipped" ]; then
+            echo "## ⏭️ Some macOS Tests Skipped (Rate Limited)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Tests were skipped due to GitHub API rate limiting. This is expected behavior." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Some macOS Tests Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please check the failed jobs above for details." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check if all tests passed
+        run: |
+          STRATEGIC_RESULT="${{ needs.integration-tests-strategic-macos.result }}"
+
+          # Allow success or skipped (due to rate limiting)
+          if [ "$STRATEGIC_RESULT" != "success" ] && [ "$STRATEGIC_RESULT" != "skipped" ]; then
+            echo "Strategic integration tests failed with result: $STRATEGIC_RESULT"
+            exit 1
+          fi
+
+          echo "All macOS tests passed or were skipped!"

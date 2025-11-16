@@ -1,0 +1,51 @@
+name: wezterm
+version:
+  source: "github-release:wez/wezterm"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+
+build_type: custom
+description: "GPU-accelerated cross-platform terminal emulator and multiplexer"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/wez/wezterm/releases/download/{version}/{suffix}"
+  platforms:
+    darwin-x86_64:
+      suffix: "WezTerm-macos-{version}.zip"
+    darwin-arm64:
+      suffix: "WezTerm-macos-{version}.zip"
+    linux-amd64:
+      suffix: "wezterm-{version}.Ubuntu22.04.tar.xz"
+    linux-arm64:
+      suffix: "wezterm-{version}.Ubuntu22.04.tar.xz"
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Archive already extracted by downloader
+    true
+
+build:
+  timeout_minutes: 1
+  out_of_tree: false
+  custom_install: |
+    mkdir -p $PREFIX/bin
+    case "$(uname -s)" in
+      Darwin*)
+        mkdir -p $PREFIX/Applications
+        find . -name "*.app" -type d -exec cp -r {} "$PREFIX/Applications/WezTerm.app" \; -quit
+        ln -sf $PREFIX/Applications/WezTerm.app/Contents/MacOS/wezterm $PREFIX/bin/wezterm
+        ;;
+      *)
+        find . -type f -name wezterm -exec cp {} $PREFIX/bin/ \;
+        find . -type f -name wezterm-gui -exec cp {} $PREFIX/bin/ \;
+        find . -type f -name wezterm-mux-server -exec cp {} $PREFIX/bin/ \;
+        ;;
+    esac
+
+dependencies:
+  - unzip

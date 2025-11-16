@@ -1,0 +1,35 @@
+name: memcached
+version:
+  source: "github-tag:memcached/memcached"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily|flash|wbuf|stack)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+
+build_type: gnu_autotools
+description: "High-performance, distributed memory object caching system"
+
+download:
+  download_url: "https://www.memcached.org/files/memcached-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  flags:
+    - --prefix=$PREFIX
+    - --enable-64bit
+    - --enable-sasl
+
+build:
+  timeout_minutes: 5
+  out_of_tree: false
+
+dependencies:
+  - make
+  - gcc

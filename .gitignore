@@ -1,0 +1,96 @@
+# =============================================================================
+# Potions Project .gitignore
+# =============================================================================
+
+# OS & Platform Specific
+# =============================================================================
+.DS_Store
+Thumbs.db
+.AppleDouble/
+.LSOverride/
+.directory
+
+# IDE & Editor Files
+# =============================================================================
+.vscode/
+!.vscode/cspell.json
+!.vscode/extensions.json
+!.vscode/recipes.schema.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+*.iml
+
+# Security & Credentials (NEVER COMMIT)
+# =============================================================================
+*.key
+*.pem
+*.p12
+*.pfx
+*_rsa*
+*_dsa*
+*_ecdsa*
+*_ed25519*
+id_*
+known_hosts*
+authorized_keys*
+.ssh/
+.gnupg/
+.gpg
+*.asc
+*.sig
+.env
+.env.local
+.env.*.local
+
+# Build & Compilation
+# =============================================================================
+# Compiled binaries (platform-specific)
+*.exe
+*.exe~
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Build directories
+bin/
+dist/
+.build-temp/
+potions
+
+# Go build outputs
+*.out
+*.test
+*.prof
+go.sum.orig
+go.work.sum
+
+# Test & Coverage
+# =============================================================================
+tests/temp/
+test-dist/
+test/
+!test/*.go
+coverage.*
+
+# Release Artifacts
+# =============================================================================
+*.tar.gz
+*.sha256
+*.sbom.json
+*.provenance.json
+
+# Temporary Files & Logs
+# =============================================================================
+*.tmp
+*.log
+
+# Dependencies (if added)
+# =============================================================================
+node_modules/
+vendor/

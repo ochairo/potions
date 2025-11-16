@@ -1,0 +1,31 @@
+name: xz
+version:
+  source: "github-tag:tukaani-project/xz"
+  exclude_patterns: "(alpha|beta|rc)"
+  extract_pattern: "[0-9]+[.][0-9]+[.][0-9]+"
+  cleanup: "s/^v//"
+
+build_type: gnu_autotools
+description: "XZ Utils - LZMA compression library and tools"
+
+download:
+  download_url: "https://github.com/tukaani-project/xz/releases/download/v{version}/xz-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--disable-doc"
+
+build:
+  timeout_minutes: 15
+  out_of_tree: false
+
+dependencies: []

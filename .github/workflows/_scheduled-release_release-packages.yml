@@ -1,0 +1,460 @@
+name: "_Scheduled Release - Release Packages"
+
+on:
+  workflow_call:
+    inputs:
+      packages:
+        description: "JSON array of packages to check for release"
+        required: true
+        type: string
+      run_id:
+        description: "Workflow run ID for artifact download"
+        required: true
+        type: string
+    secrets:
+      GH_TOKEN:
+        required: true
+
+jobs:
+  release-packages:
+    name: Release Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write # Required for creating releases
+      actions: read # Required for artifact download
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Set up Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v5
+        with:
+          go-version-file: go.mod
+          cache: false # Disabled - job only builds CLI once, prevents cleanup warnings
+
+      - name: Build potions CLI
+        run: |
+          echo "🔨 Building potions CLI..."
+          go build -o bin/potions ./cmd/potions
+          echo "✅ Built: $(./bin/potions help | head -1)"
+
+      - name: Check available disk space
+        run: |
+          echo "💾 Checking available disk space..."
+          df -h
+          AVAILABLE_GB=$(df -BG . | awk 'NR==2 {print $4}' | sed 's/G//')
+          echo "📊 Available space: ${AVAILABLE_GB}GB"
+
+          if [ "$AVAILABLE_GB" -lt 20 ]; then
+            echo "⚠️  WARNING: Low disk space (${AVAILABLE_GB}GB available)"
+            echo "🧹 Cleaning up to free space..."
+
+            # Remove unnecessary files
+            sudo rm -rf /usr/share/dotnet
+            sudo rm -rf /opt/ghc
+            sudo rm -rf /usr/local/share/boost
+            sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+            echo "✅ Cleanup complete"
+            df -h
+          else
+            echo "✅ Sufficient disk space available"
+          fi
+
+      - name: Wait for artifact uploads
+        run: |
+          echo "⏳ Waiting for all build artifacts to be uploaded..."
+          echo ""
+
+          # Calculate expected artifacts dynamically from packages input
+          PACKAGES='${{ inputs.packages }}'
+          PACKAGE_COUNT=$(echo "$PACKAGES" | jq -r 'length')
+
+          # Extract unique platforms across all packages
+          ALL_PLATFORMS=$(echo "$PACKAGES" | jq -r '[.[].platforms // ["linux-x86_64","linux-arm64","macos-x86_64","macos-arm64"]] | flatten | unique | .[]' | tr '\n' ' ')
+
+          # Calculate total expected artifacts (sum of platforms for each package)
+          EXPECTED_TOTAL_ARTIFACTS=0
+          for i in $(seq 0 $(( PACKAGE_COUNT - 1 ))); do
+            PKG_NAME=$(echo "$PACKAGES" | jq -r ".[$i].package")
+            PKG_PLATFORMS=$(echo "$PACKAGES" | jq -r ".[$i].platforms | length")
+            echo "📦 $PKG_NAME: expecting $PKG_PLATFORMS platform artifacts"
+            EXPECTED_TOTAL_ARTIFACTS=$(( EXPECTED_TOTAL_ARTIFACTS + PKG_PLATFORMS ))
+          done
+
+          echo ""
+          echo "📊 Expecting:"
+          echo "  - Packages: $PACKAGE_COUNT"
+          echo "  - Total artifacts: $EXPECTED_TOTAL_ARTIFACTS"
+          echo "  - Platforms in use: $ALL_PLATFORMS"
+          echo ""
+
+          MAX_WAIT_SECONDS=3600  # 60 minutes max
+          POLL_INTERVAL=60       # Check every 60 seconds (less API calls)
+          STABLE_COUNT_REQUIRED=3  # Require count stable for 3 checks (3 min) - API lag buffer
+          MIN_WAIT_SECONDS=180   # Always wait at least 3 minutes for artifact API propagation (fallback only)
+          ELAPSED=0
+          STABLE_COUNT=0
+          LAST_COUNT=0
+
+          while [ $ELAPSED -lt $MAX_WAIT_SECONDS ]; do
+            # Check current artifact count
+            CURRENT_COUNT=$(gh api repos/${{ github.repository }}/actions/runs/${{ inputs.run_id }}/artifacts \
+              --jq '.artifacts[] | select(.name | endswith("-builds")) | .name' 2>/dev/null | wc -l | tr -d ' ')
+
+            echo "[$ELAPSED s] Found $CURRENT_COUNT/$EXPECTED_TOTAL_ARTIFACTS artifact(s)"
+
+            # Check each package has its expected platforms
+            ALL_PACKAGES_READY=true
+            for i in $(seq 0 $(( PACKAGE_COUNT - 1 ))); do
+              PKG_NAME=$(echo "$PACKAGES" | jq -r ".[$i].package")
+              PKG_PLATFORMS_JSON=$(echo "$PACKAGES" | jq -c ".[$i].platforms // []")
+              PKG_PLATFORM_COUNT=$(echo "$PKG_PLATFORMS_JSON" | jq -r 'length')
+
+              # Count how many artifacts exist for this package (batch ID = i)
+              BATCH_ARTIFACT_COUNT=$(gh api repos/${{ github.repository }}/actions/runs/${{ inputs.run_id }}/artifacts \
+                --jq ".artifacts[] | select(.name | endswith(\"-batch-$i-builds\")) | .name" 2>/dev/null | wc -l | tr -d ' ')
+
+              echo "  - $PKG_NAME (batch-$i): $BATCH_ARTIFACT_COUNT/$PKG_PLATFORM_COUNT artifacts"
+
+              if [ "$BATCH_ARTIFACT_COUNT" -lt "$PKG_PLATFORM_COUNT" ]; then
+                ALL_PACKAGES_READY=false
+              fi
+            done
+
+            # Check if count is stable (no new uploads)
+            if [ "$CURRENT_COUNT" -eq "$LAST_COUNT" ]; then
+              STABLE_COUNT=$((STABLE_COUNT + 1))
+            else
+              STABLE_COUNT=0
+              LAST_COUNT=$CURRENT_COUNT
+            fi
+
+            # Exit conditions (priority order):
+            # 1. All expected artifacts present AND stable (min wait can be skipped!)
+            # 2. All packages have required platform artifacts AND stable (min wait can be skipped!)
+            # 3. Min wait passed AND count stable (fallback for incomplete uploads)
+            if [ "$CURRENT_COUNT" -eq "$EXPECTED_TOTAL_ARTIFACTS" ] && [ "$STABLE_COUNT" -ge "$STABLE_COUNT_REQUIRED" ]; then
+              echo ""
+              echo "✅ All $EXPECTED_TOTAL_ARTIFACTS artifacts present and stable for $((STABLE_COUNT * POLL_INTERVAL))s"
+              break
+            elif [ "$ALL_PACKAGES_READY" = true ] && [ "$STABLE_COUNT" -ge "$STABLE_COUNT_REQUIRED" ]; then
+              echo ""
+              echo "✅ All packages ready ($CURRENT_COUNT artifacts) and stable for $((STABLE_COUNT * POLL_INTERVAL))s"
+              break
+            elif [ "$ELAPSED" -ge "$MIN_WAIT_SECONDS" ] && [ "$STABLE_COUNT" -ge "$STABLE_COUNT_REQUIRED" ] && [ "$CURRENT_COUNT" -gt 0 ]; then
+              echo ""
+              echo "⚠️  Artifact count stable at $CURRENT_COUNT (expected $EXPECTED_TOTAL_ARTIFACTS) after ${MIN_WAIT_SECONDS}s min wait. Proceeding anyway..."
+              break
+            fi
+
+            # Show progress
+            if [ "$ELAPSED" -lt "$MIN_WAIT_SECONDS" ]; then
+              echo "  Min wait: $ELAPSED/${MIN_WAIT_SECONDS}s, Stability: $STABLE_COUNT/$STABLE_COUNT_REQUIRED"
+            else
+              echo "  Stability: $STABLE_COUNT/$STABLE_COUNT_REQUIRED (waiting ${POLL_INTERVAL}s...)"
+            fi
+
+            sleep $POLL_INTERVAL
+            ELAPSED=$((ELAPSED + POLL_INTERVAL))
+          done
+
+          if [ "$CURRENT_COUNT" -eq 0 ]; then
+            echo ""
+            echo "⚠️  WARNING: No artifacts found after ${MAX_WAIT_SECONDS}s"
+            echo "   Build jobs may still be running or have failed."
+          else
+            echo ""
+            echo "📊 Final artifact count: $CURRENT_COUNT (expected $EXPECTED_TOTAL_ARTIFACTS)"
+            if [ "$CURRENT_COUNT" -lt "$EXPECTED_TOTAL_ARTIFACTS" ]; then
+              echo "⚠️  Missing $(( EXPECTED_TOTAL_ARTIFACTS - CURRENT_COUNT )) artifacts - partial release may occur"
+            fi
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check GitHub API rate limits
+        run: |
+          echo "🔍 Checking GitHub API rate limits..."
+          RATE_INFO=$(gh api rate_limit --jq '.rate')
+          REMAINING=$(echo "$RATE_INFO" | jq -r '.remaining')
+          LIMIT=$(echo "$RATE_INFO" | jq -r '.limit')
+          RESET_TIME=$(echo "$RATE_INFO" | jq -r '.reset')
+
+          echo "📊 API Rate Limit: $REMAINING / $LIMIT remaining"
+
+          if [ "$REMAINING" -lt 100 ]; then
+            CURRENT_TIME=$(date +%s)
+            WAIT_TIME=$((RESET_TIME - CURRENT_TIME + 60))
+            if [ "$WAIT_TIME" -gt 0 ] && [ "$WAIT_TIME" -lt 3600 ]; then
+              echo "⚠️  Low rate limit ($REMAINING remaining). Waiting ${WAIT_TIME}s for reset..."
+              sleep "$WAIT_TIME"
+            else
+              echo "⚠️  Low rate limit but proceeding anyway (reset time: $(date -d @$RESET_TIME 2>/dev/null || date -r $RESET_TIME))"
+            fi
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download artifacts
+        run: |
+          echo "📥 Downloading artifacts from run ${{ inputs.run_id }}"
+          rm -rf current-artifacts
+          mkdir -p current-artifacts
+
+          # Get list of all artifacts for this run using API
+          echo "🔍 Fetching artifact list..."
+          gh api repos/${{ github.repository }}/actions/runs/${{ inputs.run_id }}/artifacts --jq '.artifacts[] | select(.name | endswith("-builds")) | .name' > artifact-list.txt || {
+            echo "⚠️  Failed to get artifact list, will retry downloads anyway"
+            touch artifact-list.txt
+          }
+
+          ARTIFACT_COUNT=$(wc -l < artifact-list.txt | tr -d ' ')
+          echo "📦 Found $ARTIFACT_COUNT build artifact(s) to download"
+
+          if [ "$ARTIFACT_COUNT" -eq 0 ]; then
+            echo "⚠️  WARNING: No artifacts found! Build jobs may have failed or not uploaded yet."
+            echo "   Check the build job status and try again later."
+            exit 1
+          fi
+
+          # Show artifact breakdown by platform
+          echo ""
+          echo "Artifact breakdown:"
+          grep "linux-x86_64" artifact-list.txt 2>/dev/null | wc -l | xargs -I {} echo "  Linux x86_64: {} artifacts"
+          grep "linux-arm64" artifact-list.txt 2>/dev/null | wc -l | xargs -I {} echo "  Linux ARM64: {} artifacts"
+          grep "macos-arm64" artifact-list.txt 2>/dev/null | wc -l | xargs -I {} echo "  macOS ARM64: {} artifacts"
+          grep "macos-x86_64" artifact-list.txt 2>/dev/null | wc -l | xargs -I {} echo "  macOS Intel: {} artifacts"
+          echo ""
+
+          # Check disk space before downloading
+          AVAILABLE_GB=$(df -BG . | awk 'NR==2 {print $4}' | sed 's/G//')
+          echo "💾 Available disk space: ${AVAILABLE_GB}GB"
+
+          # Download artifacts individually with better error handling
+          DOWNLOADED_COUNT=0
+          FAILED_COUNT=0
+
+          while read -r artifact_name; do
+            [ -z "$artifact_name" ] && continue
+
+            # Skip if already downloaded
+            if [ -d "current-artifacts/$artifact_name" ]; then
+              echo "  ⏭️  Already exists: $artifact_name"
+              DOWNLOADED_COUNT=$((DOWNLOADED_COUNT + 1))
+              continue
+            fi
+
+            echo "  📥 Downloading: $artifact_name"
+
+            # Try download with timeout and better error handling
+            set +e
+            timeout 300 gh run download ${{ inputs.run_id }} \
+              --repo ${{ github.repository }} \
+              --name "$artifact_name" \
+              --dir "current-artifacts/$artifact_name" 2>&1 | tee download-output.log
+            DOWNLOAD_EXIT=$?
+            set -e
+
+            if [ $DOWNLOAD_EXIT -eq 0 ]; then
+              echo "  ✅ Downloaded: $artifact_name"
+              DOWNLOADED_COUNT=$((DOWNLOADED_COUNT + 1))
+            elif [ $DOWNLOAD_EXIT -eq 124 ]; then
+              echo "  ⏱️  TIMEOUT: $artifact_name (skipping)"
+              FAILED_COUNT=$((FAILED_COUNT + 1))
+            elif grep -q "no space left on device" download-output.log 2>/dev/null; then
+              echo "  💾 DISK FULL: Cannot download more artifacts"
+              echo "  ⚠️  Proceeding with $DOWNLOADED_COUNT artifacts already downloaded"
+              break
+            else
+              echo "  ❌ FAILED: $artifact_name"
+              FAILED_COUNT=$((FAILED_COUNT + 1))
+            fi
+
+            rm -f download-output.log
+          done < artifact-list.txt
+
+          echo ""
+          echo "📊 Download Summary:"
+          echo "  ✅ Downloaded: $DOWNLOADED_COUNT artifacts"
+          echo "  ❌ Failed: $FAILED_COUNT artifacts"
+
+          if [ "$DOWNLOADED_COUNT" -eq 0 ]; then
+            echo ""
+            echo "❌ ERROR: No artifacts were downloaded successfully"
+            exit 1
+          fi
+
+          # Show what we got
+          DOWNLOADED_FILES=$(find current-artifacts -name '*.tar.gz' -type f 2>/dev/null | wc -l | tr -d ' ')
+          TOTAL_SIZE=$(du -sh current-artifacts 2>/dev/null | cut -f1)
+          echo "📊 Downloaded $DOWNLOADED_FILES package file(s), Total size: $TOTAL_SIZE"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Flatten artifacts directory
+        run: |
+          echo "📁 Flattening artifacts directory structure..."
+          echo ""
+
+          # Count files before flattening
+          BEFORE_COUNT=$(find current-artifacts -type f \( -name '*.tar.gz' -o -name '*.sha256' -o -name '*.sha512' -o -name '*.sbom.json' -o -name '*.provenance.json' \) | wc -l | tr -d ' ')
+          echo "📊 Found $BEFORE_COUNT artifact files to flatten"
+
+          # Show sample of current structure
+          echo "Current structure (sample):"
+          find current-artifacts -type f | head -10
+          echo ""
+
+          # Create temp directory for flattened artifacts
+          mkdir -p artifacts-flat
+
+          # Move all artifact files from nested directories to flat structure
+          # Use verbose mode to see what's being moved
+          find current-artifacts -type f \( \
+            -name '*.tar.gz' -o \
+            -name '*.sha256' -o \
+            -name '*.sha512' -o \
+            -name '*.sbom.json' -o \
+            -name '*.provenance.json' \
+          \) -exec sh -c 'echo "  → $(basename "$1")"; mv "$1" artifacts-flat/' _ {} \;
+
+          # Replace current-artifacts with flattened version
+          rm -rf current-artifacts
+          mv artifacts-flat current-artifacts
+
+          # Show final structure
+          FINAL_COUNT=$(find current-artifacts -type f | wc -l | tr -d ' ')
+          echo ""
+          echo "✅ Flattened $FINAL_COUNT files into current-artifacts/"
+          echo ""
+          echo "Final structure (sample):"
+          ls -lh current-artifacts/ | head -10 || true
+          echo ""
+
+          if [ "$FINAL_COUNT" -eq 0 ]; then
+            echo "⚠️  WARNING: No files found after flattening!"
+            exit 1
+          fi
+
+      - name: Verify artifact integrity
+        run: |
+          echo "🔐 Verifying artifact checksums..."
+          VERIFIED=0
+          FAILED=0
+
+          find current-artifacts -name '*.tar.gz' -type f 2>/dev/null | while read -r tarball; do
+            if [ -f "${tarball}.sha256" ]; then
+              if ./bin/potions verify "$tarball" --checksum "${tarball}.sha256" 2>/dev/null; then
+                VERIFIED=$((VERIFIED + 1))
+              else
+                echo "❌ Checksum verification failed for $(basename "$tarball")"
+                FAILED=$((FAILED + 1))
+                # Remove corrupted files
+                rm -f "$tarball" "${tarball}.sha256"
+              fi
+            fi
+          done
+
+          echo "📊 Verification: $VERIFIED passed, $FAILED failed"
+          if [ "$FAILED" -gt 0 ]; then
+            echo "⚠️  Warning: $FAILED corrupted artifacts removed"
+          fi
+
+      - name: Validate artifacts before release
+        run: |
+          echo "🔍 Validating artifacts..."
+
+          # Parse packages JSON and validate each one
+          echo '${{ inputs.packages }}' | jq -r '.[] | "\(.package) \(.version)"' | while read -r package version; do
+            echo "Validating $package $version..."
+            if ./bin/potions validate-release "$package" "$version" --artifacts current-artifacts --recipes recipes --quiet; then
+              echo "  ✅ $package $version validated"
+            else
+              echo "  ⚠️  $package $version validation failed (will attempt release anyway)"
+            fi
+          done
+
+      - name: Process releases
+        run: |
+          echo "🚀 Processing package releases..."
+
+          # Use CLI to handle entire release process
+          ./bin/potions release \
+            --packages '${{ inputs.packages }}' \
+            --artifacts current-artifacts \
+            --recipes recipes \
+            --owner ${{ github.repository_owner }} \
+            --repo ${{ github.event.repository.name }} \
+            --failures release-failures.txt \
+            --successes release-successes.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release Summary
+        if: always()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 Release Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          SUCCESS_COUNT=0
+          FAILURE_COUNT=0
+
+          if [ -f release-successes.txt ]; then
+            SUCCESS_COUNT=$(wc -l < release-successes.txt | tr -d ' ')
+            echo "✅ Releases created: $SUCCESS_COUNT"
+            if [ -s release-successes.txt ]; then
+              echo ""
+              echo "Successful releases:"
+              cat release-successes.txt | while read line; do
+                echo "  • $line"
+              done
+            fi
+          else
+            echo "✅ Releases created: 0"
+          fi
+
+          if [ -f release-failures.txt ]; then
+            FAILURE_COUNT=$(wc -l < release-failures.txt | tr -d ' ')
+            echo ""
+            echo "❌ Failed releases: $FAILURE_COUNT"
+            if [ -s release-failures.txt ]; then
+              echo ""
+              echo "Failed releases:"
+              cat release-failures.txt | while read line; do
+                echo "  • $line"
+              done
+            fi
+          else
+            echo ""
+            echo "❌ Failed releases: 0"
+          fi
+
+          TOTAL=$((SUCCESS_COUNT + FAILURE_COUNT))
+          if [ "$TOTAL" -gt 0 ]; then
+            SUCCESS_RATE=$(awk "BEGIN {printf \"%.1f\", $SUCCESS_COUNT * 100.0 / $TOTAL}")
+            echo ""
+            echo "📦 Total packages processed: $TOTAL"
+            echo "🎯 Success rate: ${SUCCESS_RATE}%"
+          fi
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          # Exit with error if all releases failed
+          if [ "$SUCCESS_COUNT" -eq 0 ] && [ "$FAILURE_COUNT" -gt 0 ]; then
+            echo ""
+            echo "⚠️  Error: All release attempts failed"
+            exit 1
+          fi
+
+      - name: Upload release report
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: release-report
+          path: |
+            release-failures.txt
+            release-successes.txt
+          retention-days: 30
+          if-no-files-found: ignore

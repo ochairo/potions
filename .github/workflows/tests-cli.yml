@@ -1,0 +1,109 @@
+name: Tests - CLI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "cmd/potions/**"
+      - "test/cli_test.go"
+      - "internal/**"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/test-cli.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "cmd/potions/**"
+      - "test/cli_test.go"
+      - "internal/**"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/test-cli.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cli-tests:
+    name: CLI Tests
+    runs-on: ${{ matrix.os }}
+    if: "!startsWith(github.event.head_commit.message, 'chore:')"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        go: ["1.24"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+          cache: true
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run CLI help tests
+        run: go test -v ./test -run TestCLI_HelpAndVersion -timeout 2m
+        env:
+          TEST_PACKAGE: curl
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run CLI list tests
+        run: go test -v ./test -run TestCLI_List -timeout 2m
+        env:
+          TEST_PACKAGE: curl
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run CLI verify tests
+        run: go test -v ./test -run TestCLI_Verify -timeout 2m
+        env:
+          TEST_PACKAGE: curl
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run CLI monitor tests
+        run: go test -v ./test -run TestCLI_Monitor -timeout 5m
+        env:
+          TEST_PACKAGE: curl
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run CLI build tests
+        run: go test -v ./test -run TestCLI_Build -timeout 10m
+        env:
+          TEST_PACKAGE: curl
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run CLI validate-release tests
+        run: go test -v ./test -run TestCLI_ValidateRelease -timeout 10m
+        env:
+          TEST_PACKAGE: curl
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  cli-tests-full:
+    name: CLI Tests (Full Suite)
+    runs-on: ubuntu-latest
+    if: "github.event_name == 'workflow_dispatch' && !startsWith(github.event.head_commit.message, 'chore:')"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run all CLI tests
+        run: go test -v ./test -run TestCLI_ -timeout 20m
+        env:
+          TEST_PACKAGE: curl
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

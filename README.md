@@ -31,6 +31,7 @@ Pre-compiled binaries for macOS and Linux, automatically built and signed.
 ## 🏛️ Documentation
 
 - [Architecture](./docs/ARCHITECTURE.md) - Build and release pipeline
+- [Roadmap](./docs/ROADMAP.md) - Future plans and feature roadmap
 - [Contributing](./docs/CONTRIBUTING.md) - Development setup and adding packages
 
 <br><br>

@@ -33,13 +33,13 @@ build:
     else
       # Find pyenv directory
       PYENV_DIR=$(find . -maxdepth 1 -type d -name "pyenv-*" | head -1)
-      
+
       if [ -z "$PYENV_DIR" ]; then
         echo "Error: pyenv directory not found and bin/libexec not in current dir" >&2
         ls -la >&2
         exit 1
       fi
-      
+
       WORK_DIR="$PYENV_DIR"
     fi
 

@@ -25,17 +25,25 @@ build:
     mkdir -p "$PREFIX/bin"
     mkdir -p "$PREFIX/share/goenv"
 
-    # Find goenv directory
-    GOENV_DIR=$(find . -maxdepth 1 -type d -name "goenv-*" | head -1)
-
-    if [ -z "$GOENV_DIR" ]; then
-      echo "Error: goenv directory not found" >&2
-      ls -la >&2
-      exit 1
+    # Check if we're already in the extracted directory or need to cd into it
+    if [ -d "bin" ] && [ -d "libexec" ]; then
+      # Already in the right directory (extracted flat)
+      WORK_DIR="."
+    else
+      # Find goenv directory
+      GOENV_DIR=$(find . -maxdepth 1 -type d -name "goenv-*" | head -1)
+      
+      if [ -z "$GOENV_DIR" ]; then
+        echo "Error: goenv directory not found and bin/libexec not in current dir" >&2
+        ls -la >&2
+        exit 1
+      fi
+      
+      WORK_DIR="$GOENV_DIR"
     fi
 
     # Copy all goenv files to share directory
-    cp -r "$GOENV_DIR"/* "$PREFIX/share/goenv/"
+    cp -r "$WORK_DIR"/* "$PREFIX/share/goenv/"
 
     # Create symlink to bin
     ln -sf "$PREFIX/share/goenv/bin/goenv" "$PREFIX/bin/goenv"

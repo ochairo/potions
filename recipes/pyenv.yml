@@ -26,17 +26,25 @@ build:
     mkdir -p "$PREFIX/bin"
     mkdir -p "$PREFIX/share/pyenv"
 
-    # Find pyenv directory
-    PYENV_DIR=$(find . -maxdepth 1 -type d -name "pyenv-*" | head -1)
-
-    if [ -z "$PYENV_DIR" ]; then
-      echo "Error: pyenv directory not found" >&2
-      ls -la >&2
-      exit 1
+    # Check if we're already in the extracted directory or need to cd into it
+    if [ -d "bin" ] && [ -d "libexec" ]; then
+      # Already in the right directory (extracted flat)
+      WORK_DIR="."
+    else
+      # Find pyenv directory
+      PYENV_DIR=$(find . -maxdepth 1 -type d -name "pyenv-*" | head -1)
+      
+      if [ -z "$PYENV_DIR" ]; then
+        echo "Error: pyenv directory not found and bin/libexec not in current dir" >&2
+        ls -la >&2
+        exit 1
+      fi
+      
+      WORK_DIR="$PYENV_DIR"
     fi
 
     # Copy all pyenv files to share directory
-    cp -r "$PYENV_DIR"/* "$PREFIX/share/pyenv/"
+    cp -r "$WORK_DIR"/* "$PREFIX/share/pyenv/"
 
     # Build pyenv components
     cd "$PREFIX/share/pyenv/src" && make || true

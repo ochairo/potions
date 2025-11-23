@@ -128,8 +128,20 @@
           "description": "Shell script to run during configure phase"
         },
         "flags": {
-          "type": "string",
-          "description": "Configure flags for autotools/cmake builds"
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Configure flags as a single string for autotools/cmake builds"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Configure flags as an array for autotools/cmake builds"
+            }
+          ],
+          "description": "Configure flags for autotools/cmake builds (string or array)"
         }
       }
     },

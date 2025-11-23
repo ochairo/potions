@@ -61,7 +61,7 @@
         },
         "download_url": {
           "type": "string",
-          "description": "Download URL template. Supports placeholders: {version}, {os}, {arch}, {suffix}. Use {suffix} with platform-specific suffix values for per-platform URLs."
+          "description": "Download URL template. Supports placeholders: {version}, {os}, {arch}, {suffix}, and any custom platform-specific property like {target}."
         },
         "platforms": {
           "type": "object",
@@ -77,23 +77,30 @@
                   "type": "object",
                   "properties": {
                     "os": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Platform-specific OS name for {os} placeholder"
                     },
                     "arch": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Platform-specific architecture for {arch} placeholder"
                     },
                     "suffix": {
                       "type": "string",
                       "description": "Platform-specific URL suffix. Replaces {suffix} placeholder in download_url. Example: '-x86_64-apple-darwin.tar.gz'"
                     },
                     "url": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Complete platform-specific download URL (overrides download_url)"
                     },
                     "checksum_url": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Platform-specific checksum URL"
                     }
                   },
-                  "additionalProperties": false
+                  "additionalProperties": {
+                    "type": "string",
+                    "description": "Custom platform-specific property (e.g., 'target' for Rust triple)"
+                  }
                 }
               ]
             }
@@ -119,6 +126,10 @@
         "script": {
           "type": "string",
           "description": "Shell script to run during configure phase"
+        },
+        "flags": {
+          "type": "string",
+          "description": "Configure flags for autotools/cmake builds"
         }
       }
     },

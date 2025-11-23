@@ -1,6 +1,6 @@
 name: vim
 version:
-  source: "github-release:vim/vim"
+  source: "github-tag:vim/vim"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
   extract_pattern: "v[0-9]+\\.[0-9]+\\.[0-9]+"
   cleanup: "v:"

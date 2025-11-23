@@ -1,0 +1,24 @@
+name: bzip2
+version:
+  source: "url:https://sourceware.org/pub/bzip2/"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+build_type: gnu_autotools
+description: "GNU bzip2"
+download:
+  download_url: "https://sourceware.org/pub/bzip2/bzip2-{version}.tar.gz"
+  mirror: "https://mirrors.kernel.org/bzip2/bzip2-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: ""
+build:
+  timeout_minutes: 30
+dependencies: []

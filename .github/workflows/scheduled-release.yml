@@ -96,7 +96,15 @@ jobs:
         build-binaries-macos-arm64,
         build-binaries-macos-x86_64,
       ]
-    if: always() && needs.detect-updates.result == 'success' && github.event.inputs.dry_run != 'true'
+    # Only run if detect-updates succeeded AND at least one build job succeeded
+    if: |
+      always() &&
+      needs.detect-updates.result == 'success' &&
+      github.event.inputs.dry_run != 'true' &&
+      (needs.build-binaries-linux-x86_64.result == 'success' ||
+       needs.build-binaries-linux-arm64.result == 'success' ||
+       needs.build-binaries-macos-arm64.result == 'success' ||
+       needs.build-binaries-macos-x86_64.result == 'success')
     uses: ./.github/workflows/_scheduled-release_release-packages.yml
     with:
       packages: ${{ needs.detect-updates.outputs.packages }}
@@ -107,7 +115,14 @@ jobs:
   workflow-summary:
     name: Workflow Summary
     runs-on: ubuntu-latest
-    if: always()
+    # Only run if at least one build job completed (success or failure)
+    if: |
+      always() &&
+      needs.detect-updates.result == 'success' &&
+      (needs.build-binaries-linux-x86_64.result != 'skipped' ||
+       needs.build-binaries-linux-arm64.result != 'skipped' ||
+       needs.build-binaries-macos-arm64.result != 'skipped' ||
+       needs.build-binaries-macos-x86_64.result != 'skipped')
     permissions:
       actions: read # Required for artifact download
     needs:

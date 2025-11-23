@@ -10,6 +10,11 @@ description: "Bash Automated Testing System"
 download:
   official_binary: false
   download_url: "https://github.com/bats-core/bats-core/archive/refs/tags/v{version}.tar.gz"
+  platforms:
+    darwin-x86_64: {}
+    darwin-arm64: {}
+    linux-amd64: {}
+    linux-arm64: {}
 
 security:
   verify_signature: false

@@ -9,6 +9,11 @@ description: "Web-based interactive development environment for notebooks"
 download:
   official_binary: false
   # Installed via pip from PyPI
+  platforms:
+    darwin-x86_64: {}
+    darwin-arm64: {}
+    linux-amd64: {}
+    linux-arm64: {}
 
 security:
   verify_signature: false

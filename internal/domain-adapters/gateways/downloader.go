@@ -212,6 +212,12 @@ func (d *Downloader) BuildDownloadURL(template, version string, platformConfig *
 			// Replace {version} in suffix if present
 			suffix = strings.ReplaceAll(suffix, "{version}", version)
 		}
+
+		// Replace custom fields (e.g., {target}, {triple}, etc.)
+		for key, value := range platformConfig.Custom {
+			placeholder := "{" + key + "}"
+			url = strings.ReplaceAll(url, placeholder, value)
+		}
 	}
 
 	url = strings.ReplaceAll(url, "{os}", os)

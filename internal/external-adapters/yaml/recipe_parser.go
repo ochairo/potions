@@ -42,6 +42,8 @@ type yamlPlatformConfig struct {
 	OS     string `yaml:"os"`
 	Arch   string `yaml:"arch"`
 	Suffix string `yaml:"suffix"`
+	// Inline map captures any additional custom fields (e.g., target, triple)
+	Custom map[string]string `yaml:",inline"`
 }
 
 type yamlSecurity struct {
@@ -119,10 +121,19 @@ func convertVersion(yv yamlVersion) entities.VersionConfig {
 func convertDownload(yd yamlDownload) entities.RecipeDownload {
 	platforms := make(map[string]entities.PlatformConfig)
 	for name, cfg := range yd.Platforms {
+		// Extract custom fields (exclude known fields: os, arch, suffix)
+		custom := make(map[string]string)
+		for k, v := range cfg.Custom {
+			if k != "os" && k != "arch" && k != "suffix" {
+				custom[k] = v
+			}
+		}
+
 		platforms[name] = entities.PlatformConfig{
 			OS:     cfg.OS,
 			Arch:   cfg.Arch,
 			Suffix: cfg.Suffix,
+			Custom: custom,
 		}
 	}
 

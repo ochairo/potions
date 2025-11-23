@@ -23,16 +23,8 @@ security:
 build:
   timeout_minutes: 2
   custom_install: |
-    # Requires Python to be installed
-    PYTHON=""
-    if command -v python3 >/dev/null 2>&1; then
-      PYTHON="python3"
-    elif command -v python >/dev/null 2>&1; then
-      PYTHON="python"
-    else
-      echo "Error: Python not found. Install python recipe first." >&2
-      exit 1
-    fi
+    mkdir -p "$PREFIX/bin"
+    mkdir -p "$PREFIX/share/podman-compose"
 
     # Check if we're already in the extracted directory or need to cd into it
     if [ -f "podman_compose.py" ]; then
@@ -51,10 +43,13 @@ build:
       WORK_DIR="$COMPOSE_DIR"
     fi
 
-    cd "$WORK_DIR"
+    # Copy the main script
+    cp "$WORK_DIR/podman_compose.py" "$PREFIX/share/podman-compose/podman_compose.py"
+    chmod +x "$PREFIX/share/podman-compose/podman_compose.py"
 
-    # Install using pip
-    $PYTHON -m pip install --prefix="$PREFIX" .
+    # Create wrapper script in bin that calls python3
+    printf '#!/bin/sh\nexec python3 "%s" "$@"\n' "$PREFIX/share/podman-compose/podman_compose.py" > "$PREFIX/bin/podman-compose"
+    chmod +x "$PREFIX/bin/podman-compose"
 
     # Verify installation
     if [ ! -f "$PREFIX/bin/podman-compose" ]; then

@@ -35,7 +35,8 @@ type RecipeDownload struct {
 type PlatformConfig struct {
 	OS     string
 	Arch   string
-	Suffix string // Platform-specific suffix for download URLs
+	Suffix string            // Platform-specific suffix for download URLs
+	Custom map[string]string // Custom platform-specific fields for URL templates (e.g., "target": "x86_64-apple-darwin")
 }
 
 // RecipeSecurity represents security configuration

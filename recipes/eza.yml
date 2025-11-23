@@ -9,12 +9,9 @@ description: "Modern replacement for ls (written in Rust)"
 
 download:
   official_binary: true
+  # eza only provides pre-built binaries for Linux (no macOS builds available)
   download_url: "https://github.com/eza-community/eza/releases/download/v{version}/eza_{target}.tar.gz"
   platforms:
-    darwin-x86_64:
-      target: "x86_64-apple-darwin"
-    darwin-arm64:
-      target: "aarch64-apple-darwin"
     linux-amd64:
       target: "x86_64-unknown-linux-gnu"
     linux-arm64:

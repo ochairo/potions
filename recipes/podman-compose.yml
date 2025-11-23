@@ -34,16 +34,24 @@ build:
       exit 1
     fi
 
-    # Find podman-compose directory
-    COMPOSE_DIR=$(find . -maxdepth 1 -type d -name "podman-compose-*" | head -1)
+    # Check if we're already in the extracted directory or need to cd into it
+    if [ -f "podman_compose.py" ]; then
+      # Already in the right directory
+      WORK_DIR="."
+    else
+      # Find podman-compose directory
+      COMPOSE_DIR=$(find . -maxdepth 1 -type d -name "podman-compose-*" | head -1)
 
-    if [ -z "$COMPOSE_DIR" ]; then
-      echo "Error: podman-compose directory not found" >&2
-      ls -la >&2
-      exit 1
+      if [ -z "$COMPOSE_DIR" ]; then
+        echo "Error: podman-compose directory not found and podman_compose.py not in current dir" >&2
+        ls -la >&2
+        exit 1
+      fi
+
+      WORK_DIR="$COMPOSE_DIR"
     fi
 
-    cd "$COMPOSE_DIR"
+    cd "$WORK_DIR"
 
     # Install using pip
     $PYTHON -m pip install --prefix="$PREFIX" .

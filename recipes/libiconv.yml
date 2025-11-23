@@ -1,0 +1,33 @@
+name: libiconv
+version:
+  source: "url:https://ftp.gnu.org/gnu/libiconv/"
+  extract_pattern: 'libiconv-([0-9]+\.[0-9]+)\.tar\.gz'
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+build_type: gnu_autotools
+description: "Conversion library for character encodings"
+
+download:
+  official_binary: false
+  download_url: "https://ftp.gnu.org/gnu/libiconv/libiconv-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    ./configure --prefix="$PREFIX" \
+      --disable-dependency-tracking \
+      --enable-static \
+      --enable-shared
+
+build:
+  timeout_minutes: 10
+  out_of_tree: false
+
+dependencies: []

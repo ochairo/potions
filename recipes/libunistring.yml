@@ -1,0 +1,36 @@
+name: libunistring
+version:
+  source: "url:https://ftp.gnu.org/gnu/libunistring/"
+  extract_pattern: 'libunistring-([0-9]+\.[0-9]+)\.tar\.xz'
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+build_type: gnu_autotools
+description: "C string library for manipulating Unicode strings"
+
+download:
+  official_binary: false
+  download_url: "https://ftp.gnu.org/gnu/libunistring/libunistring-{version}.tar.xz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract .tar.xz if not already done
+    if ls *.tar.xz >/dev/null 2>&1; then
+      tar xJf *.tar.xz --strip-components=1
+    fi
+
+    ./configure --prefix="$PREFIX" \
+      --disable-dependency-tracking
+
+build:
+  timeout_minutes: 10
+  out_of_tree: false
+
+dependencies: []

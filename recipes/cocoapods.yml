@@ -1,0 +1,37 @@
+name: cocoapods
+version:
+  source: "url:https://rubygems.org/api/v1/gems/cocoapods.json"
+  extract_pattern: '"version":"([0-9]+\.[0-9]+\.[0-9]+)"'
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+build_type: custom
+description: "Dependency manager for Swift and Objective-C projects"
+
+download:
+  official_binary: false
+  # Installed via gem from RubyGems
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 5
+  custom_install: |
+    # Requires Ruby to be installed
+    if ! command -v gem >/dev/null 2>&1; then
+      echo "Error: gem not found. Install ruby recipe first." >&2
+      exit 1
+    fi
+
+    # Install cocoapods using gem
+    gem install --install-dir "$PREFIX/lib/ruby/gems" --bindir "$PREFIX/bin" cocoapods -v "$VERSION"
+
+    # Verify installation
+    if [ ! -f "$PREFIX/bin/pod" ]; then
+      echo "Error: pod binary not found after installation" >&2
+      ls -la "$PREFIX/bin" >&2
+      exit 1
+    fi
+
+dependencies:
+  - ruby

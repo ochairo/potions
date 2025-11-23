@@ -1,0 +1,29 @@
+name: libwebp
+version:
+  source: "github-release:webmproject/libwebp"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "v[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "v:"
+
+build_type: gnu_autotools
+description: "WebP image format library"
+
+download:
+  download_url: "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--enable-libwebpmux --enable-libwebpdemux"
+
+build:
+  timeout_minutes: 20
+
+dependencies: []

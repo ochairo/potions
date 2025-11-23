@@ -1,0 +1,44 @@
+name: httpie
+version:
+  source: "github-release:httpie/cli"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "Modern HTTP client for the CLI"
+
+download:
+  official_binary: false
+  # HTTPie distributes primarily via pip/package managers
+  # We'll build from source or use pipx
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 5
+  custom_install: |
+    # HTTPie is a Python package, install via pip
+    # Requires Python to be installed first
+
+    PYTHON=""
+    if command -v python3 >/dev/null 2>&1; then
+      PYTHON="python3"
+    elif command -v python >/dev/null 2>&1; then
+      PYTHON="python"
+    else
+      echo "Error: Python not found. Install python recipe first." >&2
+      exit 1
+    fi
+
+    # Install httpie using pip
+    $PYTHON -m pip install --prefix="$PREFIX" "httpie==$VERSION"
+
+    # Verify installation
+    if [ ! -f "$PREFIX/bin/http" ] && [ ! -f "$PREFIX/bin/https" ]; then
+      echo "Error: httpie binaries not found after installation" >&2
+      exit 1
+    fi
+
+dependencies:
+  - python

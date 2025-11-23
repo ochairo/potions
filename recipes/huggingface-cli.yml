@@ -1,0 +1,43 @@
+name: huggingface-cli
+version:
+  source: "url:https://pypi.org/pypi/huggingface-hub/json"
+  extract_pattern: '"version":"([0-9]+\.[0-9]+\.[0-9]+)"'
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+build_type: custom
+description: "Hugging Face Hub CLI for model and dataset management"
+
+download:
+  official_binary: false
+  # Installed via pip from PyPI
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 5
+  custom_install: |
+    # Requires Python to be installed
+    PYTHON=""
+    if command -v python3 >/dev/null 2>&1; then
+      PYTHON="python3"
+    elif command -v python >/dev/null 2>&1; then
+      PYTHON="python"
+    else
+      echo "Error: Python not found. Install python recipe first." >&2
+      exit 1
+    fi
+
+    # Install huggingface-hub using pip
+    $PYTHON -m pip install --prefix="$PREFIX" "huggingface-hub[cli]==$VERSION"
+
+    # Verify installation
+    if [ ! -f "$PREFIX/bin/huggingface-cli" ]; then
+      echo "Error: huggingface-cli binary not found after installation" >&2
+      echo "Contents of $PREFIX/bin:" >&2
+      ls -la "$PREFIX/bin" >&2
+      exit 1
+    fi
+
+dependencies:
+  - python

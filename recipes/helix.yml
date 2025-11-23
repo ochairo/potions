@@ -1,0 +1,67 @@
+name: helix
+version:
+  source: "github-release:helix-editor/helix"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+(\.[0-9]+)?'
+build_type: custom
+description: "Post-modern modal text editor"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/helix-editor/helix/releases/download/{version}/helix-{version}-{arch}-{os}.tar.xz"
+  platforms:
+    darwin-x86_64:
+      os: "macos"
+      arch: "x86_64"
+    darwin-arm64:
+      os: "macos"
+      arch: "aarch64"
+    linux-amd64:
+      os: "linux"
+      arch: "x86_64"
+    linux-arm64:
+      os: "linux"
+      arch: "aarch64"
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract .tar.xz archive
+    if ls *.tar.xz >/dev/null 2>&1; then
+      tar xJf *.tar.xz
+    fi
+
+build:
+  timeout_minutes: 1
+  custom_install: |
+    mkdir -p "$PREFIX/bin"
+
+    # Find helix directory
+    HELIX_DIR=$(find . -type d -name "helix-*" | head -1)
+    if [ -z "$HELIX_DIR" ]; then
+      echo "Error: helix directory not found" >&2
+      ls -la >&2
+      exit 1
+    fi
+
+    # Copy binary
+    if [ -f "$HELIX_DIR/hx" ]; then
+      cp "$HELIX_DIR/hx" "$PREFIX/bin/hx"
+    else
+      echo "Error: hx binary not found in $HELIX_DIR" >&2
+      ls -la "$HELIX_DIR" >&2
+      exit 1
+    fi
+
+    chmod +x "$PREFIX/bin/hx"
+
+    # Copy runtime files if present
+    if [ -d "$HELIX_DIR/runtime" ]; then
+      mkdir -p "$PREFIX/share/helix"
+      cp -r "$HELIX_DIR/runtime" "$PREFIX/share/helix/"
+    fi
+
+dependencies: []

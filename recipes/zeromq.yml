@@ -1,0 +1,30 @@
+name: zeromq
+version:
+  source: "github-release:zeromq/libzmq"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "v[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "v:"
+
+build_type: cmake
+description: "High-performance asynchronous messaging library"
+
+download:
+  download_url: "https://github.com/zeromq/libzmq/releases/download/v{version}/zeromq-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "-DENABLE_DRAFTS=OFF"
+
+build:
+  timeout_minutes: 20
+
+dependencies:
+  - libsodium

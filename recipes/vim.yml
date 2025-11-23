@@ -1,0 +1,30 @@
+name: vim
+version:
+  source: "github-release:vim/vim"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "v[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "v:"
+
+build_type: gnu_autotools
+description: "Vi IMproved - enhanced vi editor"
+
+download:
+  download_url: "https://github.com/vim/vim/archive/v{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--enable-multibyte --enable-pythoninterp --with-features=huge"
+
+build:
+  timeout_minutes: 30
+
+dependencies:
+  - ncurses

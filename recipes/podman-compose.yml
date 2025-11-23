@@ -1,0 +1,55 @@
+name: podman-compose
+version:
+  source: "github-tag:containers/podman-compose"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'v[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: "v:"
+build_type: custom
+description: "Docker Compose replacement for Podman"
+
+download:
+  official_binary: false
+  download_url: "https://github.com/containers/podman-compose/archive/refs/tags/v{version}.tar.gz"
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 2
+  custom_install: |
+    # Requires Python to be installed
+    PYTHON=""
+    if command -v python3 >/dev/null 2>&1; then
+      PYTHON="python3"
+    elif command -v python >/dev/null 2>&1; then
+      PYTHON="python"
+    else
+      echo "Error: Python not found. Install python recipe first." >&2
+      exit 1
+    fi
+
+    # Find podman-compose directory
+    COMPOSE_DIR=$(find . -maxdepth 1 -type d -name "podman-compose-*" | head -1)
+
+    if [ -z "$COMPOSE_DIR" ]; then
+      echo "Error: podman-compose directory not found" >&2
+      ls -la >&2
+      exit 1
+    fi
+
+    cd "$COMPOSE_DIR"
+
+    # Install using pip
+    $PYTHON -m pip install --prefix="$PREFIX" .
+
+    # Verify installation
+    if [ ! -f "$PREFIX/bin/podman-compose" ]; then
+      echo "Error: podman-compose binary not found after installation" >&2
+      ls -la "$PREFIX/bin" >&2
+      exit 1
+    fi
+
+dependencies:
+  - python
+  - podman

@@ -1,0 +1,31 @@
+name: libfido2
+version:
+  source: "github-release:Yubico/libfido2"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: ""
+
+build_type: cmake
+description: "Library for FIDO 2.0, including communication with authenticator"
+
+download:
+  download_url: "https://github.com/Yubico/libfido2/archive/{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: ""
+
+build:
+  timeout_minutes: 20
+
+dependencies:
+  - libcbor
+  - openssl

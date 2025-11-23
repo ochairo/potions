@@ -65,11 +65,56 @@ jobs:
           sudo wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
           sudo chmod +x /usr/local/bin/yq
 
+      - name: Get recently failed packages
+        id: get-failed-packages
+        run: |
+          # Query last 100 workflow runs to find recently failed packages
+          # This prevents repeatedly trying to build packages that are currently failing
+
+          echo "🔍 Checking recent workflow failures (last 100 runs)..."
+
+          FAILED_PACKAGES="[]"
+
+          # Get recent workflow runs (last 100)
+          gh run list \
+            --workflow "scheduled-release.yml" \
+            --limit 100 \
+            --json conclusion,databaseId,displayTitle \
+            --jq '.[] | select(.conclusion == "failure") | {id: .databaseId, title: .displayTitle}' \
+            > recent_failures.json || echo "[]" > recent_failures.json
+
+          # Extract package names from failure titles (e.g., "Release curl" -> "curl")
+          if [ -s recent_failures.json ]; then
+            FAILED_PACKAGES=$(cat recent_failures.json | jq -r '.title' | \
+              sed -n 's/^Release \([a-zA-Z0-9_-]*\)$/\1/p' | \
+              sort -u | \
+              jq -R . | jq -s -c .)
+
+            FAILED_COUNT=$(echo "$FAILED_PACKAGES" | jq 'length')
+            if [ "$FAILED_COUNT" -gt 0 ]; then
+              echo "⚠️  Found $FAILED_COUNT recently failed packages:"
+              echo "$FAILED_PACKAGES" | jq -r '.[] | "  - \(.)"'
+            else
+              echo "✅ No recently failed packages found"
+            fi
+          else
+            echo "✅ No recent workflow failures"
+          fi
+
+          {
+            echo "failed_packages<<EOF"
+            echo "$FAILED_PACKAGES"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Monitor for updates
         id: monitor
         run: |
           PACKAGE_INPUT="${{ inputs.package }}"
           VERSION_INPUT="${{ inputs.version }}"
+          FAILED_PACKAGES='${{ steps.get-failed-packages.outputs.failed_packages }}'
 
           if [ -n "$PACKAGE_INPUT" ] && [ "$PACKAGE_INPUT" != "" ]; then
             # Manual trigger with specific package
@@ -159,18 +204,28 @@ jobs:
             FOUND_PACKAGES="[]"
             UPDATES_FOUND=0
             PACKAGES_CHECKED=0
+            PACKAGES_SKIPPED=0
             TOTAL_PACKAGES=$(echo $MONITORED_PACKAGES | wc -w)
 
             for pkg in $MONITORED_PACKAGES; do
               # Check if we've reached the update limit
               if [ $UPDATES_FOUND -ge $MAX_UPDATES_TO_FIND ]; then
                 echo "✅ Found $UPDATES_FOUND updates (limit reached)"
-                echo "📅 Remaining $(( TOTAL_PACKAGES - PACKAGES_CHECKED )) packages will be checked on next scheduled run"
+                REMAINING=$(( TOTAL_PACKAGES - PACKAGES_CHECKED - PACKAGES_SKIPPED ))
+                echo "📅 Remaining $REMAINING packages will be checked on next scheduled run"
                 break
               fi
 
+              # Skip recently failed packages
+              if echo "$FAILED_PACKAGES" | jq -e --arg pkg "$pkg" 'any(. == $pkg)' > /dev/null 2>&1; then
+                PACKAGES_SKIPPED=$(( PACKAGES_SKIPPED + 1 ))
+                echo "⏭️  [$PACKAGES_SKIPPED skipped] Skipping $pkg (recently failed in last 100 runs)"
+                continue
+              fi
+
               PACKAGES_CHECKED=$(( PACKAGES_CHECKED + 1 ))
-              echo -n "[$PACKAGES_CHECKED/$TOTAL_PACKAGES] Checking $pkg... "
+              PROCESSED=$(( PACKAGES_CHECKED + PACKAGES_SKIPPED ))
+              echo -n "[$PROCESSED/$TOTAL_PACKAGES] Checking $pkg... "
 
               # Monitor this single package
               set +e
@@ -224,6 +279,8 @@ jobs:
 
             echo ""
             echo "📊 Monitoring Summary:"
+            echo "  - Total packages: $TOTAL_PACKAGES"
+            echo "  - Skipped (recently failed): $PACKAGES_SKIPPED"
             echo "  - Checked: $PACKAGES_CHECKED packages"
             echo "  - Found updates: $UPDATES_FOUND packages"
             echo ""

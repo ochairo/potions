@@ -1,0 +1,29 @@
+name: libde265
+version:
+  source: "github-release:strukturag/libde265"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "v[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "v:"
+
+build_type: cmake
+description: "Open h.265 video codec implementation"
+
+download:
+  download_url: "https://github.com/strukturag/libde265/releases/download/v{version}/libde265-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: ""
+
+build:
+  timeout_minutes: 20
+
+dependencies: []

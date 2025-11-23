@@ -1,0 +1,42 @@
+name: pyenv
+version:
+  source: "github-tag:pyenv/pyenv"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'v[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: "v:"
+build_type: custom
+description: "Python version manager"
+
+download:
+  official_binary: false
+  download_url: "https://github.com/pyenv/pyenv/archive/refs/tags/v{version}.tar.gz"
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 2
+  custom_install: |
+    mkdir -p "$PREFIX/bin"
+    mkdir -p "$PREFIX/share/pyenv"
+
+    # Find pyenv directory
+    PYENV_DIR=$(find . -maxdepth 1 -type d -name "pyenv-*" | head -1)
+
+    if [ -z "$PYENV_DIR" ]; then
+      echo "Error: pyenv directory not found" >&2
+      ls -la >&2
+      exit 1
+    fi
+
+    # Copy all pyenv files to share directory
+    cp -r "$PYENV_DIR"/* "$PREFIX/share/pyenv/"
+
+    # Build pyenv components
+    cd "$PREFIX/share/pyenv/src" && make || true
+
+    # Create symlink to bin
+    ln -sf "$PREFIX/share/pyenv/bin/pyenv" "$PREFIX/bin/pyenv"
+
+dependencies: []

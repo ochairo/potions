@@ -1,0 +1,36 @@
+name: p11-kit
+version:
+  source: "github-release:p11-glue/p11-kit"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "[0-9]+\\.[0-9]+"
+  cleanup: ""
+
+build_type: custom
+description: "Library to load and enumerate PKCS#11 modules"
+
+download:
+  download_url: "https://github.com/p11-glue/p11-kit/releases/download/{version}/p11-kit-{version}.tar.xz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    meson setup build --prefix="$PREFIX"
+
+build:
+  timeout_minutes: 20
+  custom_build: |
+    ninja -C build
+  custom_install: |
+    ninja -C build install
+
+dependencies:
+  - libtasn1
+  - libffi

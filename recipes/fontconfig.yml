@@ -1,0 +1,30 @@
+name: fontconfig
+version:
+  source: "url:https://www.freedesktop.org/software/fontconfig/release/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "fontconfig-[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "fontconfig-:.tar.xz"
+
+build_type: gnu_autotools
+description: "Library for configuring and customizing font access"
+
+download:
+  download_url: "https://www.freedesktop.org/software/fontconfig/release/fontconfig-{version}.tar.xz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--disable-docs"
+
+build:
+  timeout_minutes: 20
+
+dependencies:
+  - freetype

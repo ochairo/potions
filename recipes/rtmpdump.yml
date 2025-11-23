@@ -1,0 +1,34 @@
+name: rtmpdump
+version:
+  source: "url:https://rtmpdump.mplayerhq.hu/download/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "[0-9]+"
+  cleanup: ""
+
+build_type: make
+description: "Tool for downloading RTMP streaming media"
+
+download:
+  download_url: "https://rtmpdump.mplayerhq.hu/download/rtmpdump-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: ""
+
+build:
+  timeout_minutes: 15
+  custom_build: |
+    make SYS=posix prefix="$PREFIX"
+  custom_install: |
+    make install SYS=posix prefix="$PREFIX"
+
+dependencies:
+  - openssl

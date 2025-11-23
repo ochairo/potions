@@ -1,0 +1,29 @@
+name: snappy
+version:
+  source: "github-release:google/snappy"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: ""
+
+build_type: cmake
+description: "Fast compression and decompression library"
+
+download:
+  download_url: "https://github.com/google/snappy/archive/{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "-DSNAPPY_BUILD_TESTS=OFF -DSNAPPY_BUILD_BENCHMARKS=OFF"
+
+build:
+  timeout_minutes: 15
+
+dependencies: []

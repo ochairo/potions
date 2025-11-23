@@ -1,0 +1,29 @@
+name: nghttp2
+version:
+  source: "github-release:nghttp2/nghttp2"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "v[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "v:"
+
+build_type: gnu_autotools
+description: "HTTP/2 C library and tools"
+
+download:
+  download_url: "https://github.com/nghttp2/nghttp2/releases/download/v{version}/nghttp2-{version}.tar.xz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--enable-lib-only"
+
+build:
+  timeout_minutes: 20
+
+dependencies: []

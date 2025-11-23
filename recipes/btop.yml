@@ -1,0 +1,57 @@
+name: btop
+version:
+  source: "github-release:aristocratos/btop"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'v[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: "v:"
+build_type: custom
+description: "Resource monitor - better top/htop (C++)"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/aristocratos/btop/releases/download/v{version}/btop-{arch}-{os}.tbz"
+  platforms:
+    darwin-x86_64:
+      os: "macos"
+      arch: "x86_64"
+    darwin-arm64:
+      os: "macos"
+      arch: "aarch64"
+    linux-amd64:
+      os: "linux"
+      arch: "x86_64"
+    linux-arm64:
+      os: "linux"
+      arch: "aarch64"
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract .tbz (tar.bz2) archive
+    tar xjf btop-*.tbz
+
+build:
+  timeout_minutes: 1
+  custom_install: |
+    mkdir -p "$PREFIX/bin"
+
+    # Binary is in btop/bin/btop
+    if [ -f "btop/bin/btop" ]; then
+      cp btop/bin/btop "$PREFIX/bin/btop"
+    elif [ -f "bin/btop" ]; then
+      cp bin/btop "$PREFIX/bin/btop"
+    elif [ -f "btop" ]; then
+      cp btop "$PREFIX/bin/btop"
+    else
+      echo "Error: btop binary not found" >&2
+      ls -la >&2
+      find . -name btop -type f 2>/dev/null >&2
+      exit 1
+    fi
+
+    chmod +x "$PREFIX/bin/btop"
+
+dependencies: []

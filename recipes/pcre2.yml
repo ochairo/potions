@@ -1,0 +1,29 @@
+name: pcre2
+version:
+  source: "github-release:PCRE2Project/pcre2"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "pcre2-[0-9]+\\.[0-9]+"
+  cleanup: "pcre2-:"
+
+build_type: gnu_autotools
+description: "Perl Compatible Regular Expressions library (version 2)"
+
+download:
+  download_url: "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-{version}/pcre2-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--enable-jit --enable-pcre2-16 --enable-pcre2-32"
+
+build:
+  timeout_minutes: 20
+
+dependencies: []

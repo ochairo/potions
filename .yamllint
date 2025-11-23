@@ -1,0 +1,33 @@
+---
+extends: default
+
+rules:
+  line-length:
+    max: 200
+    level: warning
+
+  indentation:
+    spaces: 2
+    indent-sequences: true
+
+  comments:
+    min-spaces-from-content: 1
+
+  comments-indentation: {}
+
+  document-start: disable
+
+  truthy:
+    allowed-values: ["true", "false"]
+    check-keys: false
+
+  braces:
+    max-spaces-inside: 1
+
+  brackets:
+    max-spaces-inside: 1
+
+ignore: |
+  .github/
+  node_modules/
+  vendor/

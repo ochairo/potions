@@ -1,0 +1,34 @@
+name: pipx
+version:
+  source: "url:https://pypi.org/simple/pipx/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: ""
+
+build_type: custom
+description: "Execute binaries from Python packages in isolated environments"
+
+download:
+  download_url: "https://files.pythonhosted.org/packages/source/p/pipx/pipx-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: ""
+
+build:
+  timeout_minutes: 5
+  custom_build: |
+    python3 -m pip wheel --no-deps -w dist .
+  custom_install: |
+    python3 -m pip install --prefix="$PREFIX" dist/*.whl
+
+dependencies:
+  - python

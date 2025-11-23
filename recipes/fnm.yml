@@ -1,0 +1,50 @@
+name: fnm
+version:
+  source: "github-release:Schniz/fnm"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'v[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: "v:"
+build_type: custom
+description: "Fast Node Manager - version manager for Node.js"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/Schniz/fnm/releases/download/v{version}/fnm-{os}.zip"
+  platforms:
+    darwin-x86_64:
+      os: "macos"
+    darwin-arm64:
+      os: "macos"
+    linux-amd64:
+      os: "linux"
+    linux-arm64:
+      os: "linux"
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract zip archive
+    if ls *.zip >/dev/null 2>&1; then
+      unzip -q *.zip
+    fi
+
+build:
+  timeout_minutes: 1
+  custom_install: |
+    mkdir -p "$PREFIX/bin"
+
+    # Find fnm binary
+    if [ -f "fnm" ]; then
+      cp "fnm" "$PREFIX/bin/fnm"
+    else
+      echo "Error: fnm binary not found" >&2
+      ls -la >&2
+      exit 1
+    fi
+
+    chmod +x "$PREFIX/bin/fnm"
+
+dependencies: []

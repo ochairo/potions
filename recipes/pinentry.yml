@@ -1,0 +1,42 @@
+name: pinentry
+version:
+  source: "url:https://gnupg.org/ftp/gcrypt/pinentry/"
+  extract_pattern: 'pinentry-([0-9]+\.[0-9]+\.[0-9]+)\.tar\.bz2'
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+build_type: gnu_autotools
+description: "PIN entry dialog for GnuPG"
+
+download:
+  official_binary: false
+  download_url: "https://gnupg.org/ftp/gcrypt/pinentry/pinentry-{version}.tar.bz2"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  script: |
+    # Extract .tar.bz2 if not already done
+    if ls *.tar.bz2 >/dev/null 2>&1; then
+      tar xjf *.tar.bz2 --strip-components=1
+    fi
+
+    ./configure --prefix="$PREFIX" \
+      --disable-dependency-tracking \
+      --enable-pinentry-tty \
+      --disable-pinentry-qt \
+      --disable-pinentry-gtk2 \
+      --disable-pinentry-gnome3
+
+build:
+  timeout_minutes: 10
+  out_of_tree: false
+
+dependencies:
+  - libgpg-error
+  - libassuan

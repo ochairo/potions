@@ -1,0 +1,57 @@
+name: git-lfs
+version:
+  source: "github-release:git-lfs/git-lfs"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'v[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: "v:"
+build_type: custom
+description: "Git extension for versioning large files"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/git-lfs/git-lfs/releases/download/v{version}/git-lfs-{os}-{arch}-v{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+      os: "darwin"
+      arch: "amd64"
+    darwin-arm64:
+      os: "darwin"
+      arch: "arm64"
+    linux-amd64:
+      os: "linux"
+      arch: "amd64"
+    linux-arm64:
+      os: "linux"
+      arch: "arm64"
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 1
+  custom_install: |
+    mkdir -p "$PREFIX/bin"
+
+    # Find git-lfs directory or binary
+    if [ -f "git-lfs" ]; then
+      cp "git-lfs" "$PREFIX/bin/git-lfs"
+    elif [ -d "git-lfs-*" ]; then
+      LFS_DIR=$(find . -type d -name "git-lfs-*" | head -1)
+      if [ -f "$LFS_DIR/git-lfs" ]; then
+        cp "$LFS_DIR/git-lfs" "$PREFIX/bin/git-lfs"
+      else
+        echo "Error: git-lfs binary not found in $LFS_DIR" >&2
+        ls -la "$LFS_DIR" >&2
+        exit 1
+      fi
+    else
+      echo "Error: git-lfs binary not found" >&2
+      ls -la >&2
+      exit 1
+    fi
+
+    chmod +x "$PREFIX/bin/git-lfs"
+
+dependencies:
+  - git

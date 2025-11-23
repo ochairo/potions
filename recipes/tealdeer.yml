@@ -1,0 +1,50 @@
+name: tealdeer
+version:
+  source: "github-release:tealdeer-rs/tealdeer"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'v[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: "v:"
+build_type: custom
+description: "Fast TLDR client (written in Rust)"
+
+download:
+  official_binary: true
+  download_url: "https://github.com/tealdeer-rs/tealdeer/releases/download/v{version}/tealdeer-{os}-{arch}"
+  platforms:
+    darwin-x86_64:
+      os: "macos"
+      arch: "x86_64"
+    darwin-arm64:
+      os: "macos"
+      arch: "arm64"
+    linux-amd64:
+      os: "linux"
+      arch: "x86_64"
+    linux-arm64:
+      os: "linux"
+      arch: "arm64"
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 1
+  custom_install: |
+    mkdir -p "$PREFIX/bin"
+
+    # Binary downloaded directly (not in archive)
+    BINARY=$(ls tealdeer-* | head -1)
+    if [ -z "$BINARY" ] || [ ! -f "$BINARY" ]; then
+      echo "Error: tealdeer binary not found" >&2
+      ls -la >&2
+      exit 1
+    fi
+
+    cp "$BINARY" "$PREFIX/bin/tldr"
+    chmod +x "$PREFIX/bin/tldr"
+
+    # Also create tealdeer symlink
+    ln -sf "$PREFIX/bin/tldr" "$PREFIX/bin/tealdeer"
+
+dependencies: []

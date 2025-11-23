@@ -1,0 +1,31 @@
+name: lz4
+version:
+  source: "github-tag:lz4/lz4"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: 'v[0-9]+\.[0-9]+\.[0-9]+'
+  cleanup: "v:"
+build_type: custom
+description: "Extremely Fast Compression algorithm"
+
+download:
+  official_binary: false
+  download_url: "https://github.com/lz4/lz4/archive/refs/tags/v{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 10
+  out_of_tree: false
+  script: |
+    make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2) PREFIX="$PREFIX"
+  custom_install: |
+    make install PREFIX="$PREFIX"
+
+dependencies: []

@@ -1,0 +1,29 @@
+name: x265
+version:
+  source: "url:https://bitbucket.org/multicoreware/x265_git/downloads/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "x265_[0-9]+\\.[0-9]+"
+  cleanup: "x265_:"
+
+build_type: cmake
+description: "H.265/HEVC video encoder"
+
+download:
+  download_url: "https://bitbucket.org/multicoreware/x265_git/downloads/x265_{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "-DENABLE_SHARED=ON"
+
+build:
+  timeout_minutes: 30
+
+dependencies: []

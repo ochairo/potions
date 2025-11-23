@@ -1,0 +1,31 @@
+name: libtiff
+version:
+  source: "url:https://download.osgeo.org/libtiff/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "tiff-[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "tiff-:.tar.gz"
+
+build_type: gnu_autotools
+description: "Library for reading and writing TIFF files"
+
+download:
+  download_url: "https://download.osgeo.org/libtiff/tiff-{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: ""
+
+build:
+  timeout_minutes: 20
+
+dependencies:
+  - zlib
+  - libjpeg-turbo

@@ -1,0 +1,38 @@
+name: goenv
+version:
+  source: "github-tag:go-nv/goenv"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: '[0-9]+\.[0-9]+\.[0-9]+'
+build_type: custom
+description: "Go version manager"
+
+download:
+  official_binary: false
+  download_url: "https://github.com/go-nv/goenv/archive/refs/tags/{version}.tar.gz"
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 1
+  custom_install: |
+    mkdir -p "$PREFIX/bin"
+    mkdir -p "$PREFIX/share/goenv"
+
+    # Find goenv directory
+    GOENV_DIR=$(find . -maxdepth 1 -type d -name "goenv-*" | head -1)
+
+    if [ -z "$GOENV_DIR" ]; then
+      echo "Error: goenv directory not found" >&2
+      ls -la >&2
+      exit 1
+    fi
+
+    # Copy all goenv files to share directory
+    cp -r "$GOENV_DIR"/* "$PREFIX/share/goenv/"
+
+    # Create symlink to bin
+    ln -sf "$PREFIX/share/goenv/bin/goenv" "$PREFIX/bin/goenv"
+
+dependencies: []

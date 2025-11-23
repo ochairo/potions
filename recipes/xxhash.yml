@@ -1,0 +1,26 @@
+name: xxhash
+version:
+  source: "github-release:Cyan4973/xxHash"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "v[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "v:"
+
+build_type: make
+description: "Extremely fast non-cryptographic hash algorithm"
+
+download:
+  download_url: "https://github.com/Cyan4973/xxHash/archive/v{version}.tar.gz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+build:
+  timeout_minutes: 10
+
+dependencies: []

@@ -1,0 +1,33 @@
+name: cairo
+version:
+  source: "url:https://www.cairographics.org/releases/"
+  exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
+  extract_pattern: "cairo-[0-9]+\\.[0-9]+\\.[0-9]+"
+  cleanup: "cairo-:.tar.xz"
+
+build_type: gnu_autotools
+description: "2D graphics library with support for multiple output devices"
+
+download:
+  download_url: "https://www.cairographics.org/releases/cairo-{version}.tar.xz"
+  platforms:
+    darwin-x86_64:
+    darwin-arm64:
+    linux-amd64:
+    linux-arm64:
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: true
+
+configure:
+  flags: "--enable-xlib=no --enable-xcb=no"
+
+build:
+  timeout_minutes: 30
+
+dependencies:
+  - pixman
+  - freetype
+  - fontconfig
+  - libpng

@@ -82,7 +82,8 @@ jobs:
             SKIPPED=$(( TOTAL_COUNT - FILTERED_COUNT ))
             echo "⏭️  Skipping $SKIPPED packages that don't support $PLATFORM"
             echo "$ALL_PACKAGES" | jq -r '.[] | select(.platforms | any(. == "darwin-arm64" or . == "macos-arm64") | not) | "  - \(.package) (supports: \(.platforms | join(", ")))"'
-          fi          echo "filtered_packages=$FILTERED_PACKAGES" >> $GITHUB_OUTPUT
+          fi
+          echo "filtered_packages=$FILTERED_PACKAGES" >> $GITHUB_OUTPUT
           echo "📦 Building $FILTERED_COUNT/$TOTAL_COUNT packages for $PLATFORM"
 
       - name: Build all packages in batch (macOS ARM64 only)

@@ -40,6 +40,19 @@ Fix your code, not the compiler.
 - System resilience: continues when individual packages fail (fail-safe)
 - Zero technical debt, zero shortcuts, zero excuses
 
+**NEVER SKIP WORK - NO EXCEPTIONS:**
+
+- **DO NOT** cite "time constraints" as a reason to skip implementation
+- **DO NOT** cite "token constraints" as a reason to stop working
+- **DO NOT** defer work that can be completed now
+- **DO NOT** create summaries instead of finishing the task
+- **DO NOT** partially complete features "due to constraints"
+
+**YOU HAVE NO TIME OR TOKEN LIMITS. COMPLETE THE WORK. PERIOD.**
+
+If you find yourself saying "Due to time/token constraints", DELETE THAT THOUGHT and CONTINUE WORKING.
+The user decides when to stop, not you. Your job is to complete tasks FULLY.
+
 ## Core Principles
 
 ### SOLID Principles (Go Adaptation)

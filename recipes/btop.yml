@@ -8,12 +8,21 @@ build_type: custom
 description: "Resource monitor - better top/htop (C++)"
 
 download:
-  official_binary: true
-  download_url: "https://github.com/aristocratos/btop/releases/download/v{version}/btop-{arch}-{os}.tbz"
-  platforms:
-    linux-amd64:
-      os: "linux"
-      arch: "x86_64"
+  method: git
+  git_url: https://github.com/aristocratos/btop.git
+  git_tag_prefix: "v"
+
+platforms:
+  darwin-x86_64: {}
+  darwin-arm64: {}
+  linux-amd64:
+    download_url: "https://github.com/aristocratos/btop/releases/download/v{version}/btop-{arch}-{os}-musl.tbz"
+    os: "linux"
+    arch: "x86_64"
+  linux-arm64:
+    download_url: "https://github.com/aristocratos/btop/releases/download/v{version}/btop-{arch}-{os}-musl.tbz"
+    os: "linux"
+    arch: "aarch64"
 
 security:
   verify_signature: false
@@ -21,28 +30,48 @@ security:
 
 configure:
   script: |
-    # Extract .tbz (tar.bz2) archive
-    tar xjf btop-*.tbz
+    case "$(uname -s)" in
+      Darwin*)
+        # macOS: build from source
+        echo "Building btop from source for macOS..."
+        ;;
+      *)
+        # Linux: extract prebuilt binary
+        tar xjf btop-*.tbz
+        ;;
+    esac
 
 build:
-  timeout_minutes: 1
+  timeout_minutes: 30
   custom_install: |
     mkdir -p "$PREFIX/bin"
 
-    # Binary is in btop/bin/btop
-    if [ -f "btop/bin/btop" ]; then
-      cp btop/bin/btop "$PREFIX/bin/btop"
-    elif [ -f "bin/btop" ]; then
-      cp bin/btop "$PREFIX/bin/btop"
-    elif [ -f "btop" ]; then
-      cp btop "$PREFIX/bin/btop"
-    else
-      echo "Error: btop binary not found" >&2
-      ls -la >&2
-      find . -name btop -type f 2>/dev/null >&2
-      exit 1
-    fi
+    case "$(uname -s)" in
+      Darwin*)
+        # macOS: compile from source
+        echo "Compiling btop for macOS..."
+        make -j$(sysctl -n hw.ncpu) CXX=clang++
+        make install PREFIX="$PREFIX"
+        ;;
+      *)
+        # Linux: use prebuilt binary
+        if [ -f "btop/bin/btop" ]; then
+          cp btop/bin/btop "$PREFIX/bin/btop"
+        elif [ -f "bin/btop" ]; then
+          cp bin/btop "$PREFIX/bin/btop"
+        elif [ -f "btop" ]; then
+          cp btop "$PREFIX/bin/btop"
+        else
+          echo "Error: btop binary not found" >&2
+          ls -la >&2
+          find . -name btop -type f 2>/dev/null >&2
+          exit 1
+        fi
+        ;;
+    esac
 
     chmod +x "$PREFIX/bin/btop"
 
-dependencies: []
+dependencies:
+  - make
+  - cmake

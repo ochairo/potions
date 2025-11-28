@@ -91,9 +91,9 @@ jobs:
           echo "  - Platforms in use: $ALL_PLATFORMS"
           echo ""
 
-          MAX_WAIT_SECONDS=600  # 10 minutes max
+          MAX_WAIT_SECONDS=120  # 2 minutes max
           POLL_INTERVAL=60       # Check every 60 seconds (less API calls)
-          STABLE_COUNT_REQUIRED=3  # Require count stable for 3 checks (3 min) - API lag buffer
+          STABLE_COUNT_REQUIRED=2  # Require count stable for 2 checks (2 min) - API lag buffer
           ELAPSED=0
           STABLE_COUNT=0
           LAST_COUNT=0

@@ -79,6 +79,50 @@ jobs:
             --timeouts build-failures-timeout.txt \
             --errors build-failures-error.txt
 
+      - name: Create failure tracking artifact
+        if: always()
+        run: |
+          # Extract failed package names from all failure files
+          FAILED_PACKAGES="[]"
+          
+          if [ -f build-failures.txt ] && [ -s build-failures.txt ]; then
+            FAILED=$(cat build-failures.txt | sed 's/^ *//' | jq -R . | jq -s -c .)
+            FAILED_PACKAGES=$(echo "$FAILED_PACKAGES" | jq -c ". += $FAILED")
+          fi
+          
+          if [ -f build-failures-timeout.txt ] && [ -s build-failures-timeout.txt ]; then
+            FAILED=$(cat build-failures-timeout.txt | sed 's/^ *//' | jq -R . | jq -s -c .)
+            FAILED_PACKAGES=$(echo "$FAILED_PACKAGES" | jq -c ". += $FAILED")
+          fi
+          
+          if [ -f build-failures-error.txt ] && [ -s build-failures-error.txt ]; then
+            FAILED=$(cat build-failures-error.txt | sed 's/^ *//' | jq -R . | jq -s -c .)
+            FAILED_PACKAGES=$(echo "$FAILED_PACKAGES" | jq -c ". += $FAILED")
+          fi
+          
+          # Deduplicate and sort
+          FAILED_PACKAGES=$(echo "$FAILED_PACKAGES" | jq -c 'unique | sort')
+          
+          # Create tracking file
+          cat > failure-tracking.json <<EOF
+          {
+            "platform": "linux-x86_64",
+            "batch_id": "${{ matrix.batch.id }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "failed_packages": $FAILED_PACKAGES
+          }
+          EOF
+          
+          cat failure-tracking.json
+
+      - name: Upload failure tracking
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: failure-tracking-linux-x86_64-batch-${{ matrix.batch.id }}
+          path: failure-tracking.json
+          retention-days: 3
+
       - name: Upload build failures report
         if: always()
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5

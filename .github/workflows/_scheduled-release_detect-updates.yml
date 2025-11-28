@@ -268,7 +268,7 @@ jobs:
                   echo "✅ UPDATE: v$VERSION (will build)"
                   FOUND_PACKAGES=$(echo "$FOUND_PACKAGES" | jq -c ". += [{\"package\": \"$pkg\", \"version\": \"$VERSION\", \"platforms\": $NORMALIZED_PLATFORMS}]")
                   UPDATES_FOUND=$(( UPDATES_FOUND + 1 ))
-                  
+
                   # Stop checking once we've found enough updates to build
                   if [ $UPDATES_FOUND -ge $MAX_UPDATES_TO_FIND ]; then
                     echo "✋ Reached max updates limit ($MAX_UPDATES_TO_FIND), stopping scan"

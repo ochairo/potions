@@ -9,7 +9,7 @@ build_type: custom
 description: "Python package for providing Mozilla's CA Bundle"
 
 download:
-  download_url: "https://files.pythonhosted.org/packages/source/c/certifi/certifi-{version}.tar.gz"
+  download_url: "https://files.pythonhosted.org/packages/py3/c/certifi/certifi-{version}-py3-none-any.whl"
   platforms:
     darwin-x86_64:
     darwin-arm64:
@@ -26,9 +26,17 @@ configure:
 build:
   timeout_minutes: 5
   custom_build: |
-    python3 setup.py build
+    mkdir -p "$PREFIX/lib/python3.12/site-packages"
   custom_install: |
-    python3 setup.py install --prefix="$PREFIX"
+    unzip -q certifi-{version}-py3-none-any.whl -d "$PREFIX/lib/python3.12/site-packages"
+    mkdir -p "$PREFIX/bin"
+    if [ -f "$PREFIX/lib/python3.12/site-packages/certifi/__main__.py" ]; then
+      cat > "$PREFIX/bin/certifi" <<'EOF'
+    #!/bin/bash
+    python3 -m certifi "$@"
+    EOF
+      chmod +x "$PREFIX/bin/certifi"
+    fi
 
 dependencies:
   - python

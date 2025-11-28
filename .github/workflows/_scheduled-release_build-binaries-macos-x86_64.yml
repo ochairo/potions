@@ -66,10 +66,32 @@ jobs:
           chmod +x bin/potions
           echo "📦 potions CLI built: $(./bin/potions --version 2>&1 || echo 'version unknown')"
 
+      - name: Filter packages for this platform (macOS x86_64)
+        id: filter-packages
+        run: |
+          PLATFORM="darwin-x86_64"
+          ALL_PACKAGES='${{ toJson(matrix.batch.packages) }}'
+          
+          # Filter packages that support this platform (both darwin-x86_64 and macos-x86_64 formats)
+          FILTERED_PACKAGES=$(echo "$ALL_PACKAGES" | jq -c '[.[] | select(.platforms | contains(["darwin-x86_64", "macos-x86_64"]) | any)]')
+          
+          FILTERED_COUNT=$(echo "$FILTERED_PACKAGES" | jq 'length')
+          TOTAL_COUNT=$(echo "$ALL_PACKAGES" | jq 'length')
+          
+          if [ $FILTERED_COUNT -lt $TOTAL_COUNT ]; then
+            SKIPPED=$(( TOTAL_COUNT - FILTERED_COUNT ))
+            echo "⏭️  Skipping $SKIPPED packages that don't support $PLATFORM"
+            echo "$ALL_PACKAGES" | jq -r '.[] | select(.platforms | contains(["darwin-x86_64", "macos-x86_64"]) | not) | "  - \(.package) (supports: \(.platforms | join(", ")))"'
+          fi
+          
+          echo "filtered_packages=$FILTERED_PACKAGES" >> $GITHUB_OUTPUT
+          echo "📦 Building $FILTERED_COUNT/$TOTAL_COUNT packages for $PLATFORM"
+
       - name: Build all packages in batch (macOS x86_64 only)
+        if: fromJson(steps.filter-packages.outputs.filtered_packages)[0] != null
         run: |
           ./bin/potions build \
-            --packages '${{ toJson(matrix.batch.packages) }}' \
+            --packages '${{ steps.filter-packages.outputs.filtered_packages }}' \
             --platform darwin-x86_64 \
             --recipes-dir recipes \
             --output-dir dist \

@@ -29,7 +29,7 @@ build:
   timeout_minutes: 5
   custom_install: |
     mkdir -p "$PREFIX/bin"
-    
+
     if [ -f "btop/bin/btop" ]; then
       cp btop/bin/btop "$PREFIX/bin/btop"
     elif [ -f "bin/btop" ]; then
@@ -41,7 +41,7 @@ build:
       find . -name btop -type f 2>/dev/null >&2
       exit 1
     fi
-    
+
     chmod +x "$PREFIX/bin/btop"
 
 dependencies:

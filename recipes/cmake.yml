@@ -31,15 +31,21 @@ configure:
 build:
   timeout_minutes: 5
   custom_install: |
-    # Extract prebuilt binaries from cmake tarball
-    tar xzf cmake-*.tar.gz
-    # Find the cmake directory and copy bin to PREFIX
-    cmake_dir=$(find . -maxdepth 1 -name "cmake-*" -type d | head -1)
-    if [ -z "$cmake_dir" ]; then
-      echo "Error: cmake directory not found"
+    # The artifact path is the extracted directory
+    # Look for cmake binary in current directory or subdirectories
+    if [ -f ./bin/cmake ]; then
+      # Already in cmake root directory
+      cp -r ./bin/* "$PREFIX/bin/"
+      cp -r ./share/* "$PREFIX/share/" 2>/dev/null || true
+    elif [ -d ./cmake-*/bin ]; then
+      # cmake is in a subdirectory
+      cmake_dir=$(find . -maxdepth 1 -name "cmake-*" -type d | head -1)
+      cp -r "$cmake_dir/bin/"* "$PREFIX/bin/"
+      cp -r "$cmake_dir/share/"* "$PREFIX/share/" 2>/dev/null || true
+    else
+      echo "Error: cmake binary not found in extracted directory"
+      ls -la
       exit 1
     fi
-    cp -r "$cmake_dir/bin/"* "$PREFIX/bin/"
-    cp -r "$cmake_dir/share/"* "$PREFIX/share/" 2>/dev/null || true
 
 dependencies: []

@@ -70,17 +70,20 @@ jobs:
         run: |
           # Query last 100 workflow runs to find recently failed packages
           # This prevents repeatedly trying to build packages that are currently failing
+          # Only checks last 3 days of failures
 
-          echo "🔍 Checking recent workflow failures (last 100 runs)..."
+          echo "🔍 Checking recent workflow failures (last 3 days)..."
 
           FAILED_PACKAGES="[]"
 
-          # Get recent workflow runs (last 100)
+          # Get recent workflow runs (last 100) but filter to last 3 days
+          CUTOFF_DATE=$(date -u -d "3 days ago" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-3d +%Y-%m-%dT%H:%M:%SZ)
+
           gh run list \
             --workflow "scheduled-release.yml" \
             --limit 100 \
-            --json conclusion,databaseId,displayTitle \
-            --jq '.[] | select(.conclusion == "failure") | {id: .databaseId, title: .displayTitle}' \
+            --json conclusion,databaseId,displayTitle,createdAt \
+            --jq ".[] | select(.createdAt > \"$CUTOFF_DATE\" and .conclusion == \"failure\") | {id: .databaseId, title: .displayTitle}" \
             > recent_failures.json || echo "[]" > recent_failures.json
 
           # Extract package names from failure titles (e.g., "Release curl" -> "curl")
@@ -92,10 +95,10 @@ jobs:
 
             FAILED_COUNT=$(echo "$FAILED_PACKAGES" | jq 'length')
             if [ "$FAILED_COUNT" -gt 0 ]; then
-              echo "⚠️  Found $FAILED_COUNT recently failed packages:"
+              echo "⚠️  Found $FAILED_COUNT recently failed packages (last 3 days):"
               echo "$FAILED_PACKAGES" | jq -r '.[] | "  - \(.)"'
             else
-              echo "✅ No recently failed packages found"
+              echo "✅ No recently failed packages found in last 3 days"
             fi
           else
             echo "✅ No recent workflow failures"
@@ -191,35 +194,31 @@ jobs:
               echo "⚠️  Warning: GITHUB_TOKEN not available, may hit rate limits"
             fi
 
-            # ⚠️  SMART MONITORING: Search packages until finding limit or exhausting all
-            # This ensures we only check what's needed and respect API rate limits
-            # Configurable via workflow input (default: 1)
+            # ⚠️  SMART MONITORING:
+            # 1. Check ALL packages for updates (don't skip based on limit, just skip failed ones)
+            # 2. Skip recently failed packages (they have active issues)
+            # 3. Stop after finding MAX_UPDATES to build (but still check all for next run)
             MAX_UPDATES_TO_FIND="${{ inputs.max_updates }}"
-            # Ensure it's treated as a number (remove quotes, default to 1 if empty)
             MAX_UPDATES_TO_FIND=$((MAX_UPDATES_TO_FIND + 0))
 
             export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
 
-            # Convert package string to array and iterate
             FOUND_PACKAGES="[]"
             UPDATES_FOUND=0
             PACKAGES_CHECKED=0
             PACKAGES_SKIPPED=0
             TOTAL_PACKAGES=$(echo $MONITORED_PACKAGES | wc -w)
 
-            for pkg in $MONITORED_PACKAGES; do
-              # Check if we've reached the update limit
-              if [ $UPDATES_FOUND -ge $MAX_UPDATES_TO_FIND ]; then
-                echo "✅ Found $UPDATES_FOUND updates (limit reached)"
-                REMAINING=$(( TOTAL_PACKAGES - PACKAGES_CHECKED - PACKAGES_SKIPPED ))
-                echo "📅 Remaining $REMAINING packages will be checked on next scheduled run"
-                break
-              fi
+            echo "📋 Starting package update check..."
+            echo "   Max updates to build: $MAX_UPDATES_TO_FIND"
+            echo "   Failed packages to skip: $(echo "$FAILED_PACKAGES" | jq 'length')"
+            echo ""
 
-              # Skip recently failed packages
+            for pkg in $MONITORED_PACKAGES; do
+              # Skip recently failed packages (but continue checking others)
               if echo "$FAILED_PACKAGES" | jq -e --arg pkg "$pkg" 'any(. == $pkg)' > /dev/null 2>&1; then
                 PACKAGES_SKIPPED=$(( PACKAGES_SKIPPED + 1 ))
-                echo "⏭️  [$PACKAGES_SKIPPED skipped] Skipping $pkg (recently failed in last 100 runs)"
+                echo "⏭️  [$PACKAGES_SKIPPED skipped] Skipping $pkg (recently failed)"
                 continue
               fi
 
@@ -234,12 +233,12 @@ jobs:
               set -e
 
               if [ $MONITOR_EXIT -eq 124 ]; then
-                echo "⏱️  TIMEOUT (skipping)"
+                echo "⏱️  TIMEOUT"
                 continue
               fi
 
               if [ $MONITOR_EXIT -ne 0 ] || ! echo "$RESULT" | jq empty 2>/dev/null; then
-                echo "❌ ERROR (skipping)"
+                echo "❌ ERROR"
                 continue
               fi
 
@@ -251,27 +250,29 @@ jobs:
                 # Extract supported platforms from recipe file
                 RECIPE_PLATFORMS=$(yq eval '.download.platforms | keys' "recipes/${pkg}.yml" 2>/dev/null | grep -v '^$' | sed 's/^- //' | tr '\n' ' ' || echo "")
 
-                # Normalize platform names: darwin->macos, amd64->x86_64
+                # Normalize platform names
                 NORMALIZED_PLATFORMS="[]"
                 for platform in $RECIPE_PLATFORMS; do
-                  # Convert darwin-x86_64 -> macos-x86_64, linux-amd64 -> linux-x86_64, etc.
                   NORM_PLATFORM=$(echo "$platform" | sed 's/darwin/macos/g' | sed 's/amd64/x86_64/g')
                   NORMALIZED_PLATFORMS=$(echo "$NORMALIZED_PLATFORMS" | jq -c ". += [\"$NORM_PLATFORM\"]")
                 done
 
-                # Deduplicate platforms
                 NORMALIZED_PLATFORMS=$(echo "$NORMALIZED_PLATFORMS" | jq -c 'unique')
 
-                # If no platforms found, default to all 4
                 if [ "$NORMALIZED_PLATFORMS" = "[]" ]; then
                   NORMALIZED_PLATFORMS='["linux-x86_64","linux-arm64","macos-x86_64","macos-arm64"]'
                 fi
 
-                echo "✅ UPDATE AVAILABLE: v$VERSION (platforms: $(echo $NORMALIZED_PLATFORMS | jq -r 'join(", ")'))"
-                FOUND_PACKAGES=$(echo "$FOUND_PACKAGES" | jq -c ". += [{\"package\": \"$pkg\", \"version\": \"$VERSION\", \"platforms\": $NORMALIZED_PLATFORMS}]")
-                UPDATES_FOUND=$(( UPDATES_FOUND + 1 ))
+                # Only add to build queue if we haven't reached the limit
+                if [ $UPDATES_FOUND -lt $MAX_UPDATES_TO_FIND ]; then
+                  echo "✅ UPDATE: v$VERSION (will build)"
+                  FOUND_PACKAGES=$(echo "$FOUND_PACKAGES" | jq -c ". += [{\"package\": \"$pkg\", \"version\": \"$VERSION\", \"platforms\": $NORMALIZED_PLATFORMS}]")
+                  UPDATES_FOUND=$(( UPDATES_FOUND + 1 ))
+                else
+                  echo "✅ UPDATE: v$VERSION (queued for next run)"
+                fi
               else
-                echo "⏭️  UP TO DATE"
+                echo "✓ UP TO DATE"
               fi
             done
 
@@ -282,7 +283,8 @@ jobs:
             echo "  - Total packages: $TOTAL_PACKAGES"
             echo "  - Skipped (recently failed): $PACKAGES_SKIPPED"
             echo "  - Checked: $PACKAGES_CHECKED packages"
-            echo "  - Found updates: $UPDATES_FOUND packages"
+            echo "  - Updates found: $UPDATES_FOUND packages"
+            echo "  - Updates queued to build: $(echo "$FOUND_PACKAGES" | jq 'length')"
             echo ""
 
             PACKAGES=$(echo "$FOUND_PACKAGES" | jq -c '.')

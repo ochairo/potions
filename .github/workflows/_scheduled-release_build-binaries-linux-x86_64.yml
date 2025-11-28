@@ -88,7 +88,7 @@ jobs:
             build-failures.txt
             build-failures-timeout.txt
             build-failures-error.txt
-          retention-days: 7
+          retention-days: 3
           if-no-files-found: ignore
 
       - name: Check for artifacts
@@ -135,7 +135,7 @@ jobs:
         with:
           name: linux-x86_64-batch-${{ matrix.batch.id }}-builds
           path: dist/
-          retention-days: 7
+          retention-days: 3
           include-hidden-files: false
 
       - name: Upload build completion marker

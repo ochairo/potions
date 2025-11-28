@@ -4,9 +4,9 @@ run-name: ${{ inputs.package && format('Release {0}', inputs.package) || 'Schedu
 
 on:
   schedule:
-    # [UTC] Run every 30 minutes at :00 and :30
-    # [JST] Run every 30 minutes (UTC+9)
-    - cron: "0,30 * * * *"
+    # [UTC] Run every 20 minutes at :00, :20, and :40
+    # [JST] Run every 20 minutes (UTC+9)
+    - cron: "0,20,40 * * * *"
   workflow_dispatch:
     inputs:
       package:

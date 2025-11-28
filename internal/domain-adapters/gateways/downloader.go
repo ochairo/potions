@@ -138,13 +138,19 @@ func (d *Downloader) DownloadArtifact(def *entities.Recipe, version, platform, o
 	} else {
 		// HTTP download (existing behavior)
 		url := d.BuildDownloadURL(def.Download.DownloadURL, version, &platformConfig)
+		
+		// Build mirror URL if available
+		mirrorURL := ""
+		if def.Download.Mirror != "" {
+			mirrorURL = d.BuildDownloadURL(def.Download.Mirror, version, &platformConfig)
+		}
 
 		// Determine filename from URL, sanitizing to remove query params and invalid chars
 		filename := sanitizeFilename(url)
 		outputPath := filepath.Join(outputDir, filename)
 
-		// Download file
-		if err := d.downloadFile(url, outputPath); err != nil {
+		// Download file with mirror fallback
+		if err := d.downloadFileWithFallback(url, mirrorURL, outputPath); err != nil {
 			return nil, fmt.Errorf("download failed: %w", err)
 		}
 
@@ -225,6 +231,30 @@ func (d *Downloader) BuildDownloadURL(template, version string, platformConfig *
 	url = strings.ReplaceAll(url, "{suffix}", suffix)
 
 	return url
+}
+
+// downloadFileWithFallback downloads a file from URL with automatic fallback to mirror on failure
+func (d *Downloader) downloadFileWithFallback(primaryURL, mirrorURL, dest string) error {
+	// Try primary URL first
+	err := d.downloadFile(primaryURL, dest)
+	if err == nil {
+		return nil
+	}
+
+	// If primary fails and mirror is available, try mirror
+	if mirrorURL != "" && mirrorURL != primaryURL {
+		fmt.Fprintf(os.Stderr, "Primary URL failed (%v), attempting mirror...\n", err)
+		mirrorErr := d.downloadFile(mirrorURL, dest)
+		if mirrorErr == nil {
+			fmt.Fprintf(os.Stderr, "Successfully downloaded from mirror\n")
+			return nil
+		}
+		// Return original error (primary) but mention both failed
+		return fmt.Errorf("primary failed: %w (mirror also failed: %v)", err, mirrorErr)
+	}
+
+	// No mirror or mirror is same as primary
+	return err
 }
 
 // downloadFile downloads a file from URL to destination

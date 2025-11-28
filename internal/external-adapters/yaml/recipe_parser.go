@@ -32,6 +32,7 @@ type yamlVersion struct {
 type yamlDownload struct {
 	OfficialBinary bool                          `yaml:"official_binary"`
 	DownloadURL    string                        `yaml:"download_url"`
+	Mirror         string                        `yaml:"mirror"`
 	Method         string                        `yaml:"method"`
 	GitURL         string                        `yaml:"git_url"`
 	GitTagPrefix   string                        `yaml:"git_tag_prefix"`
@@ -140,6 +141,7 @@ func convertDownload(yd yamlDownload) entities.RecipeDownload {
 	return entities.RecipeDownload{
 		OfficialBinary: yd.OfficialBinary,
 		DownloadURL:    yd.DownloadURL,
+		Mirror:         yd.Mirror,
 		Method:         yd.Method,
 		GitURL:         yd.GitURL,
 		GitTagPrefix:   yd.GitTagPrefix,

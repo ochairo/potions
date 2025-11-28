@@ -25,6 +25,7 @@ type VersionConfig struct {
 type RecipeDownload struct {
 	OfficialBinary bool
 	DownloadURL    string
+	Mirror         string // Fallback mirror URL (supports {version} placeholder)
 	Method         string // "http" (default) or "git"
 	GitURL         string // Git repository URL (when method=git)
 	GitTagPrefix   string // Prefix for git tags (e.g., "v", "llvmorg-")

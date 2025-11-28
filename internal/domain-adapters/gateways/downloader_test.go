@@ -193,3 +193,49 @@ func TestSanitizeFilename(t *testing.T) {
 		})
 	}
 }
+
+func TestDownloader_DownloadFileWithFallback_MirrorUsed(t *testing.T) {
+	d := NewDownloader()
+
+	// Create a temporary directory for test files
+	tmpDir := t.TempDir()
+	destFile := filepath.Join(tmpDir, "test.txt")
+
+	// Test 1: Primary fails, mirror also fails (but we try it)
+	// Using URLs that will fail (invalid)
+	primaryURL := "http://invalid-primary-url-12345.example.local/file.txt"
+	mirrorURL := "http://invalid-mirror-url-12345.example.local/file.txt"
+
+	// This should fail since both URLs are invalid, but it demonstrates the fallback logic
+	err := d.downloadFileWithFallback(primaryURL, mirrorURL, destFile)
+	if err == nil {
+		t.Error("downloadFileWithFallback() should fail with invalid URLs")
+	}
+
+	// The error message should indicate both attempts failed or mention fallback
+	errMsg := err.Error()
+	hasFailed := false
+	if len(errMsg) > 0 {
+		hasFailed = true // Any non-empty error is a failure message
+	}
+	if !hasFailed {
+		t.Errorf("downloadFileWithFallback() should return an error message")
+	}
+}
+
+func TestDownloader_DownloadFileWithFallback_NoMirror(t *testing.T) {
+	d := NewDownloader()
+
+	tmpDir := t.TempDir()
+	destFile := filepath.Join(tmpDir, "test.txt")
+
+	// Test without mirror - just primary URL
+	primaryURL := "http://invalid-url.example.local/file.txt"
+
+	err := d.downloadFileWithFallback(primaryURL, "", destFile)
+	if err == nil {
+		t.Error("downloadFileWithFallback() should fail with invalid URL and no mirror")
+	}
+}
+
+

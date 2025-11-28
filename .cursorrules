@@ -1,0 +1,400 @@
+# Edo Framework - AI Assistant Rules
+
+You are an AI assistant helping to develop the Edo framework, a modern web component framework that combines Svelte's compilation strategy with signals-based reactivity.
+
+## Cardinal Rules
+
+**CRITICAL: All code must be production-ready. No placeholders, no TODOs, no incomplete implementations. Every piece of code should be fully functional, tested, and documented.**
+
+**NEVER USE WORKAROUNDS:** Always fix the root cause of problems. Never hide issues with:
+
+- ESLint disable comments (fix the actual type errors)
+- `@ts-ignore` or `@ts-expect-error` (fix the TypeScript error)
+- `as any` type assertions (create proper interfaces)
+- Try-catch blocks that swallow errors (handle errors properly)
+- Configuration changes that hide problems (fix the underlying issue)
+- Any other "band-aid" solutions
+
+**IF YOU WRITE `as any`, YOU FAILED. PERIOD.**
+**IF YOU WRITE `@ts-ignore`, YOU FAILED. PERIOD.**
+**IF YOU WRITE `eslint-disable`, YOU FAILED. PERIOD.**
+
+These are NOT debugging tools. These are signs of bad code.
+If TypeScript complains, the TYPE SYSTEM is right and YOUR CODE is wrong.
+Fix your code, not the type checker.
+
+**FIX THE ROOT, NOT THE SYMPTOMS:**
+
+- If types are wrong, fix the type definitions BEFORE writing code
+- If imports fail, fix the module resolution properly
+- If linting fails, fix the code quality issue at its source
+- If tests fail, fix the actual bug in the logic
+- Always address the underlying architectural problem
+
+**PRODUCTION QUALITY MEANS:**
+
+- Proper error handling with helpful messages
+- Correct TypeScript types from the FIRST LINE of code
+- Clean code that passes all quality checks WITHOUT exceptions
+- Well-architected solutions that scale
+- Zero technical debt, zero shortcuts, zero excuses
+
+## Core Principles
+
+### SOLID Principles
+
+1. **Single Responsibility Principle (SRP)**
+   - Each module/class has one reason to change
+   - Signal system: separate `signal()`, `computed()`, `effect()`
+   - Compiler stages: Parser, Transformer, CodeGenerator are distinct
+   - Each directive (`{#if}`, `{#each}`) has its own transformer
+
+2. **Open/Closed Principle (OCP)**
+   - Use plugin architecture for extensibility
+   - Core compiler closed for modification, open via plugins
+   - Extensible directive system and decorators
+
+3. **Liskov Substitution Principle (LSP)**
+   - All components extend `EdoElement` consistently
+   - Signal variants share base `ReactiveValue` interface
+   - Follow web component standards
+
+4. **Interface Segregation Principle (ISP)**
+   - Optional lifecycle hooks
+   - Granular decorator options
+   - Optional packages for routing, forms, state management
+
+5. **Dependency Inversion Principle (DIP)**
+   - Depend on abstractions, not concrete implementations
+   - Use dependency injection
+   - Plugin contracts, not specific implementations
+
+### DRY (Don't Repeat Yourself)
+
+- Extract common logic to shared utilities
+- Single source of truth for configuration
+- Reusable template transformation functions
+- Central type definitions
+
+### KISS (Keep It Simple, Stupid)
+
+- Simple solutions over clever abstractions
+- Clear code over premature optimization
+- Sensible defaults, zero config for common cases
+- Flat structures when possible
+
+## Project Structure
+
+```bash
+edo/
+├── packages/                 # Public API packages (published as @edo/*)
+│   ├── core/                # @edo/core - Runtime (signals, EdoElement)
+│   │   └── src/            # Signal implementation
+│   ├── compiler/            # @edo/compiler - Compilation API
+│   ├── vite-plugin/         # @edo/vite-plugin
+│   ├── cli/                 # @edo/cli
+│   ├── testing/             # @edo/testing
+│   ├── router/              # @edo/router
+│   ├── forms/               # @edo/forms
+│   ├── store/               # @edo/store
+│   └── polyfills/           # @edo/polyfills
+├── tests/                   # Test files
+└── docs/                    # Documentation
+```
+
+**Key Rules:**
+
+- All implementation code lives in `packages/*/src/`
+- Each package is self-contained and publishable
+- Tests import from `packages/*/src/` directly
+
+## TypeScript Requirements
+
+- **Strict mode:** Always enabled
+- **No `any` types:** Use proper typing or `unknown`
+- **Stage-3 decorators:** TypeScript 5.0+ syntax
+- **Explicit exports:** Named exports preferred over default
+- **Path aliases:** Use `@edo/core`, `@edo/compiler`, etc.
+
+## Code Patterns to Follow
+
+### Creating Signals
+
+```typescript
+// ✅ Good: Simple, clear API
+export function signal<T>(initialValue: T): Signal<T> {
+  return new Signal(initialValue);
+}
+
+// ❌ Bad: Over-abstracted
+class SignalFactory {
+  createSignal<T>(value: T, options?: SignalOptions): ISignal<T> {
+    return this.builder.withValue(value).build();
+  }
+}
+```
+
+### Plugin Pattern (OCP)
+
+```typescript
+// ✅ Good: Extensible via plugins
+export interface CompilerPlugin {
+  name: string;
+  transform(ast: AST): AST;
+}
+
+class Compiler {
+  constructor(private plugins: CompilerPlugin[]) {}
+  compile(source: string) {
+    let ast = this.parse(source);
+    for (const plugin of this.plugins) {
+      ast = plugin.transform(ast);
+    }
+    return this.generate(ast);
+  }
+}
+```
+
+### Optional Interfaces (ISP)
+
+```typescript
+// ✅ Good: Optional, granular
+interface Mountable { onMount(): void; }
+interface Destroyable { onDestroy(): void; }
+
+class MyComponent extends EdoElement implements Mountable {
+  onMount() { } // Only implement what you need
+}
+
+// ❌ Bad: Forced implementation
+interface Component {
+  onMount(): void;
+  onDestroy(): void;
+  onBeforeUpdate(): void;
+  onUpdated(): void;
+  onError(): void;
+}
+```
+
+### Dependency Injection (DIP)
+
+```typescript
+// ✅ Good: Depend on abstraction
+interface Parser {
+  parse(source: string): AST;
+}
+
+class Compiler {
+  constructor(private parser: Parser) {}
+}
+
+// ❌ Bad: Concrete dependency
+class Compiler {
+  private parser = new TypeScriptParser();
+}
+```
+
+### Error Handling
+
+```typescript
+// ✅ Good: Helpful, actionable errors
+throw new EdoCompileError(
+  'EDO001',
+  `Invalid template syntax at line ${line}, column ${column}:
+
+  ${codeFrame}
+
+  Expected closing tag for <${tagName}>.
+
+  Did you forget to close the tag?`,
+  { line, column, file }
+);
+
+// ❌ Bad: Generic errors
+throw new Error('Invalid template');
+```
+
+## What to Avoid
+
+- **Custom file extensions:** No `.edo` files - use `.ts`, `.html`, `.css`
+- **JSX syntax:** Use Svelte-like templates (`{#if}`, `{#each}`)
+- **Over-engineering:** Choose simple solutions first
+- **Circular dependencies:** Use dependency injection
+- **Deep nesting:** Keep structures flat
+- **Magic values:** Use named constants
+- **Default exports:** Prefer named exports
+- **Side effects in modules:** ESM should be tree-shakeable
+- **Large functions:** Keep under 50 lines when possible
+- **Tight coupling:** Depend on abstractions
+
+## File Naming Conventions
+
+- `kebab-case.ts` for files
+- `PascalCase` for classes
+- `camelCase` for functions/variables
+- `SCREAMING_SNAKE_CASE` for constants
+- Prefix internal/private with `_` or place in `internal/` folder
+
+## Testing Requirements
+
+- **Valuable tests over coverage metrics:** Focus on meaningful test cases that verify behavior
+- **Test-Driven Development (TDD)** for new features
+- **DRY in tests:** Extract common setup/assertions into helpers, avoid duplicated test logic
+- **Arrange-Act-Assert** pattern
+- **Descriptive test names:** Test explains what it tests
+- **One assertion per test:** Focus on one thing
+- **No flaky tests:** Deterministic, no random data
+- **Test behavior, not implementation:** Tests should survive refactoring
+
+```typescript
+// ✅ Good: Organized, descriptive, DRY
+describe('Signal', () => {
+  // Extract common setup (DRY)
+  const createSignalWithSpy = (initialValue: number) => {
+    const s = signal(initialValue);
+    const spy = vi.fn();
+    s.subscribe(spy);
+    return { signal: s, spy };
+  };
+
+  describe('creation', () => {
+    it('should create with initial value', () => {
+      const s = signal(5);
+      expect(s.value).toBe(5);
+    });
+  });
+
+  describe('updates', () => {
+    it('should notify subscribers on value change', () => {
+      const { signal: s, spy } = createSignalWithSpy(0);
+      s.value = 1;
+      expect(spy).toHaveBeenCalledOnce();
+    });
+
+    it('should batch multiple updates in same tick', () => {
+      const { signal: s, spy } = createSignalWithSpy(0);
+      s.value = 1;
+      s.value = 2;
+      s.value = 3;
+      expect(spy).toHaveBeenCalledOnce(); // batched!
+    });
+  });
+});
+```
+
+## Documentation Standards
+
+- **TSDoc comments** for all public APIs
+- Include `@example` with working code
+- Specify `@param` and `@returns`
+- Use `@see` for related APIs
+- Keep examples realistic and runnable
+
+```typescript
+/**
+ * Creates a reactive signal with an initial value.
+ *
+ * Signals are the core reactive primitive in Edo. They notify
+ * subscribers when their value changes and automatically batch
+ * updates for optimal performance.
+ *
+ * @example
+ * ```typescript
+ * const count = signal(0);
+ * count.value++; // triggers subscribers
+ *
+ * effect(() => {
+ *   console.log(count.value); // auto-tracks dependency
+ * });
+ * ```
+ *
+ * @param initialValue - The initial value of the signal
+ * @returns A reactive signal
+ * @see computed For derived values
+ * @see effect For side effects
+ */
+export function signal<T>(initialValue: T): Signal<T> {
+  return new Signal(initialValue);
+}
+```
+
+## Performance Guidelines
+
+- **< 5KB core runtime** (gzipped)
+- **Tree-shakeable:** ESM exports, no side effects
+- **Batched updates:** Use microtask scheduling
+- **Lazy execution:** Only run code when needed
+- **Memory efficient:** Clean up unused subscriptions
+- **Incremental compilation:** Only recompile what changed
+
+## Before Writing Code
+
+1. Read related code to understand context
+2. Check existing patterns and follow conventions
+3. Ensure SOLID compliance
+4. Ask: "Is there a simpler solution?" (KISS)
+5. Check if existing code can be reused (DRY)
+
+## While Writing Code
+
+**BEFORE YOU TYPE A SINGLE CHARACTER:**
+
+1. **DESIGN THE TYPES FIRST** - Define interfaces, types, and contracts BEFORE implementation
+2. **NO SHORTCUTS** - If you're tempted to use `any`, `@ts-ignore`, or `as`, STOP and design proper types
+3. **NO PLACEHOLDERS** - Don't write "TODO", don't write incomplete code, don't create technical debt
+4. **NO WORKAROUNDS** - If something doesn't work, fix the ROOT CAUSE, not the symptoms
+
+**WHILE TYPING:**
+
+1. One responsibility per module (SRP)
+2. Use TypeScript strictly (ZERO `any`, ZERO type assertions without proper interfaces)
+3. Write tests first for new features (TDD)
+4. Document public APIs with TSDoc
+5. Keep functions small (< 50 lines)
+6. **IF TYPESCRIPT COMPLAINS, YOUR CODE IS WRONG** - Fix your code, not the compiler
+
+## After Writing Code
+
+1. Run tests and ensure all pass
+2. Verify meaningful test coverage (behavior, edge cases, errors)
+3. Review for SOLID compliance
+4. Simplify where possible (KISS)
+5. Remove duplication (DRY)
+6. Verify bundle size impact
+
+## Code Review Checklist
+
+**CRITICAL CHECKS (AUTO-FAIL IF ANY VIOLATED):**
+
+- [ ] **ZERO `as any` in the code** - Auto-fail if found
+- [ ] **ZERO `@ts-ignore` or `@ts-expect-error`** - Auto-fail if found
+- [ ] **ZERO `eslint-disable`** - Auto-fail if found
+- [ ] **ZERO TODOs or placeholders** - Auto-fail if found
+- [ ] **ZERO workarounds** - Every problem fixed at root cause
+
+**QUALITY CHECKS:**
+
+- [ ] Follows SOLID principles
+- [ ] No code duplication (DRY)
+- [ ] Simple and clear (KISS)
+- [ ] TypeScript types are strict with PROPER interfaces designed FIRST
+- [ ] Tests are meaningful and cover behavior/edge cases/errors
+- [ ] Tests follow DRY (no duplicated test logic)
+- [ ] Documentation updated (TSDoc)
+- [ ] No performance regressions
+- [ ] Error messages are helpful
+- [ ] Bundle size impact acceptable
+- [ ] Follows project structure (packages/ with self-contained implementations)
+- [ ] No circular dependencies
+- [ ] Tree-shakeable (no side effects)
+
+**IF ANY CRITICAL CHECK FAILS: DELETE THE CODE AND START OVER WITH PROPER DESIGN**
+
+## When in Doubt
+
+1. Check existing code for similar patterns
+2. Review SOLID/DRY/KISS principles
+3. Choose the simpler solution
+4. Document the decision
+
+**Remember: When in doubt, choose simplicity.**

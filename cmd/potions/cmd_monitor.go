@@ -123,18 +123,9 @@ Examples:
 		outputHuman(updates)
 	}
 
-	// Exit with code 0 if updates available (for CI/CD), 1 if error
-	hasError := false
-	for _, update := range updates {
-		if update.Error != "" {
-			hasError = true
-			break
-		}
-	}
-
-	if hasError {
-		os.Exit(1)
-	}
+	// Always exit with code 0 - errors are documented in JSON and human-readable output
+	// Individual package errors don't cause failure of the entire monitoring operation
+	// The workflow script should parse the JSON to determine if there are updates
 }
 
 func checkPackageUpdate(ctx context.Context, defRepo *yaml.RecipeRepository, versionFetcher *gateways.VersionFetcher, githubGW *gateways.HTTPGitHubGateway, pkgName, recipesDir, repoOwner, repoName string) UpdateInfo {

@@ -7,25 +7,39 @@ build_type: custom
 description: "Cross-platform build system"
 
 download:
-  download_url: "https://github.com/Kitware/CMake/releases/download/v{version}/cmake-{version}.tar.gz"
+  download_url: "https://github.com/Kitware/CMake/releases/download/v{version}/cmake-{version}-{os}{arch}.tar.gz"
   platforms:
     darwin-x86_64:
+      os: "macos"
+      arch: "-x86_64"
     darwin-arm64:
+      os: "macos"
+      arch: "-arm64"
     linux-amd64:
+      os: "linux"
+      arch: "-x86_64"
     linux-arm64:
+      os: "linux"
+      arch: "-aarch64"
 security:
   verify_signature: false
-  # gpg_keys_url: ""  # Add URL to project KEYS file for auto-import
   scan_vulnerabilities: true
 
 configure:
-  script: "./bootstrap --prefix=$PREFIX --parallel=$(nproc 2>/dev/null || sysctl -n hw.ncpu)"
+  script: ""
 
 build:
-  timeout_minutes: 60
-  out_of_tree: false
-  custom_build: |
-    make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
-    make install
+  timeout_minutes: 5
+  custom_install: |
+    # Extract prebuilt binaries from cmake tarball
+    tar xzf cmake-*.tar.gz
+    # Find the cmake directory and copy bin to PREFIX
+    cmake_dir=$(find . -maxdepth 1 -name "cmake-*" -type d | head -1)
+    if [ -z "$cmake_dir" ]; then
+      echo "Error: cmake directory not found"
+      exit 1
+    fi
+    cp -r "$cmake_dir/bin/"* "$PREFIX/bin/"
+    cp -r "$cmake_dir/share/"* "$PREFIX/share/" 2>/dev/null || true
 
 dependencies: []

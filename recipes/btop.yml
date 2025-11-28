@@ -9,20 +9,11 @@ description: "Resource monitor - better top/htop (C++)"
 
 download:
   official_binary: true
-  download_url: "https://github.com/aristocratos/btop/releases/download/v{version}/btop-{os}-{arch}.tbz"
+  download_url: "https://github.com/aristocratos/btop/releases/download/v{version}/btop-{arch}-{os}.tbz"
   platforms:
-    darwin-x86_64:
-      os: "macos"
-      arch: "x86_64"
-    darwin-arm64:
-      os: "macos"
-      arch: "aarch64"
     linux-amd64:
       os: "linux"
       arch: "x86_64"
-    linux-arm64:
-      os: "linux"
-      arch: "aarch64"
 
 security:
   verify_signature: false

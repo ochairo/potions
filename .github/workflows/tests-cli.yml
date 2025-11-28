@@ -37,10 +37,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.0
+        uses: actions/checkout@5a4ac9002d0be2fb38bd78470dd880fc86b78899 # v6.0.0
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4d34df0c2316fe8b3c3c4f45d215ad193ec2aadf # v5
         with:
           go-version: ${{ matrix.go }}
           cache: true

@@ -1,0 +1,22 @@
+# CODEOWNERS file - Require code reviews for sensitive changes
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default code owner for all files
+* @ochairo
+
+# CI/CD pipelines - require review
+.github/workflows/ @ochairo
+.github/scripts/ @ochairo
+
+# Core infrastructure
+cmd/ @ochairo
+internal/ @ochairo
+go.mod @ochairo
+go.sum @ochairo
+
+# Build recipes - require review (security-sensitive)
+recipes/ @ochairo
+
+# Documentation
+docs/ @ochairo
+README.md @ochairo

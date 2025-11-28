@@ -73,10 +73,10 @@ jobs:
 
           # Filter packages that support this platform
           FILTERED_PACKAGES=$(echo "$ALL_PACKAGES" | jq -c '[.[] | select(.platforms | any(. == "linux-x86_64" or . == "linux-amd64"))]')
-          
+
           FILTERED_COUNT=$(echo "$FILTERED_PACKAGES" | jq 'length')
           TOTAL_COUNT=$(echo "$ALL_PACKAGES" | jq 'length')
-          
+
           if [ $FILTERED_COUNT -lt $TOTAL_COUNT ]; then
             SKIPPED=$(( TOTAL_COUNT - FILTERED_COUNT ))
             echo "⏭️  Skipping $SKIPPED packages that don't support $PLATFORM"

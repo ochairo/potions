@@ -74,10 +74,10 @@ jobs:
 
           # Filter packages that support this platform (both darwin-arm64 and macos-arm64 formats)
           FILTERED_PACKAGES=$(echo "$ALL_PACKAGES" | jq -c '[.[] | select(.platforms | any(. == "darwin-arm64" or . == "macos-arm64"))]')
-          
+
           FILTERED_COUNT=$(echo "$FILTERED_PACKAGES" | jq 'length')
           TOTAL_COUNT=$(echo "$ALL_PACKAGES" | jq 'length')
-          
+
           if [ $FILTERED_COUNT -lt $TOTAL_COUNT ]; then
             SKIPPED=$(( TOTAL_COUNT - FILTERED_COUNT ))
             echo "⏭️  Skipping $SKIPPED packages that don't support $PLATFORM"

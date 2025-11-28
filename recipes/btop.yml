@@ -32,8 +32,11 @@ configure:
   script: |
     case "$(uname -s)" in
       Darwin*)
-        # macOS: build from source
-        echo "Building btop from source for macOS..."
+        # macOS: build from source using cmake
+        echo "Configuring btop for macOS..."
+        mkdir -p build
+        cd build
+        cmake ..
         ;;
       *)
         # Linux: extract prebuilt binary
@@ -50,8 +53,9 @@ build:
       Darwin*)
         # macOS: compile from source
         echo "Compiling btop for macOS..."
-        make -j$(sysctl -n hw.ncpu) CXX=clang++
-        make install PREFIX="$PREFIX"
+        cd build
+        make -j$(sysctl -n hw.ncpu)
+        cp btop "$PREFIX/bin/btop"
         ;;
       *)
         # Linux: use prebuilt binary

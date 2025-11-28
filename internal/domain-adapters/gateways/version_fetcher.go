@@ -23,7 +23,7 @@ type VersionFetcher struct {
 func NewVersionFetcher() *VersionFetcher {
 	return &VersionFetcher{
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second, // Reasonable timeout for version checks
+			Timeout: 30 * time.Second, // Increased timeout for slow/flaky URLs
 		},
 	}
 }
@@ -150,7 +150,12 @@ func (vf *VersionFetcher) doWithRetry(req *http.Request) (*http.Response, error)
 
 // fetchFromURL fetches version from a plain URL
 func (vf *VersionFetcher) fetchFromURL(url string) (string, error) {
-	resp, err := vf.httpClient.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := vf.doWithRetry(req)
 	if err != nil {
 		return "", fmt.Errorf("HTTP request failed: %w", err)
 	}

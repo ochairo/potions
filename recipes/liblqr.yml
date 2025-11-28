@@ -1,9 +1,9 @@
 name: liblqr
 version:
-  source: "github-release:carlobaldassi/liblqr"
+  source: "github-tag:carlobaldassi/liblqr"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "v[0-9]+\\.[0-9]+\\.[0-9]+"
-  cleanup: "v:"
+  extract_pattern: "v([0-9]+\\.[0-9]+\\.[0-9]+)"
+  cleanup: ""
 
 build_type: custom
 description: "C/C++ seam carving library"

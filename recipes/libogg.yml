@@ -2,8 +2,8 @@ name: libogg
 version:
   source: "url:https://downloads.xiph.org/releases/ogg/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "libogg-[0-9]+\\.[0-9]+\\.[0-9]+"
-  cleanup: "libogg-:.tar.xz"
+  extract_pattern: "libogg-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.xz"
+  cleanup: ""
 
 build_type: gnu_autotools
 description: "Ogg bitstream library"

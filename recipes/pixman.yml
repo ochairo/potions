@@ -2,8 +2,8 @@ name: pixman
 version:
   source: "url:https://www.cairographics.org/releases/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "pixman-[0-9]+\\.[0-9]+\\.[0-9]+"
-  cleanup: "pixman-:.tar.gz"
+  extract_pattern: "pixman-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.gz"
+  cleanup: ""
 
 build_type: gnu_autotools
 description: "Low-level pixel manipulation library"

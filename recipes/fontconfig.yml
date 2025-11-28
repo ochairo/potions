@@ -2,8 +2,8 @@ name: fontconfig
 version:
   source: "url:https://www.freedesktop.org/software/fontconfig/release/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "fontconfig-[0-9]+\\.[0-9]+\\.[0-9]+"
-  cleanup: "fontconfig-:.tar.xz"
+  extract_pattern: "fontconfig-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.xz"
+  cleanup: ""
 
 build_type: gnu_autotools
 description: "Library for configuring and customizing font access"

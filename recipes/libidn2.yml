@@ -2,8 +2,8 @@ name: libidn2
 version:
   source: "url:https://ftp.gnu.org/gnu/libidn/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "libidn2-[0-9]+\\.[0-9]+\\.[0-9]+"
-  cleanup: "libidn2-:.tar.gz"
+  extract_pattern: "libidn2-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.gz"
+  cleanup: ""
 
 build_type: gnu_autotools
 description: "Implementation of IDNA2008/TR46 internationalized domain names"

@@ -2,8 +2,8 @@ name: libtiff
 version:
   source: "url:https://download.osgeo.org/libtiff/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "tiff-[0-9]+\\.[0-9]+\\.[0-9]+"
-  cleanup: "tiff-:.tar.gz"
+  extract_pattern: "tiff-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.gz"
+  cleanup: ""
 
 build_type: gnu_autotools
 description: "Library for reading and writing TIFF files"

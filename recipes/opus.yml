@@ -2,8 +2,8 @@ name: opus
 version:
   source: "url:https://downloads.xiph.org/releases/opus/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "opus-[0-9]+\\.[0-9]+(\\.[0-9]+)?"
-  cleanup: "opus-:.tar.gz"
+  extract_pattern: "opus-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.gz"
+  cleanup: ""
 
 build_type: gnu_autotools
 description: "Codec for interactive speech and audio transmission over the Internet"

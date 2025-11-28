@@ -2,8 +2,8 @@ name: mpdecimal
 version:
   source: "url:https://www.bytereef.org/mpdecimal/download.html"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "mpdecimal-[0-9]+\\.[0-9]+\\.[0-9]+"
-  cleanup: "mpdecimal-:.tar.gz"
+  extract_pattern: "mpdecimal-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.gz"
+  cleanup: ""
 
 build_type: gnu_autotools
 description: "Arbitrary precision decimal floating point library"

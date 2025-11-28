@@ -2,8 +2,8 @@ name: libmpc
 version:
   source: "url:https://ftp.gnu.org/gnu/mpc/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "mpc-[0-9]+\\.[0-9]+\\.[0-9]+"
-  cleanup: "mpc-:.tar.gz"
+  extract_pattern: "mpc-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.gz"
+  cleanup: ""
 
 build_type: gnu_autotools
 description: "C library for complex number arithmetic"

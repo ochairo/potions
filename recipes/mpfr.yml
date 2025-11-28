@@ -2,8 +2,8 @@ name: mpfr
 version:
   source: "url:https://www.mpfr.org/mpfr-current/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "mpfr-[0-9]+\\.[0-9]+\\.[0-9]+"
-  cleanup: "mpfr-:.tar.xz"
+  extract_pattern: "mpfr-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.xz"
+  cleanup: ""
 
 build_type: gnu_autotools
 description: "Multiple-precision floating-point library"

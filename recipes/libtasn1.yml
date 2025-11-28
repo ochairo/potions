@@ -2,8 +2,8 @@ name: libtasn1
 version:
   source: "url:https://ftp.gnu.org/gnu/libtasn1/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "libtasn1-[0-9]+\\.[0-9]+"
-  cleanup: "libtasn1-:.tar.gz"
+  extract_pattern: "libtasn1-([0-9]+\\.[0-9]+)\\.tar\\.gz"
+  cleanup: ""
 
 build_type: gnu_autotools
 description: "ASN.1 structure parser library"

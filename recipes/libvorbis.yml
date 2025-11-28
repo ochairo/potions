@@ -2,8 +2,8 @@ name: libvorbis
 version:
   source: "url:https://downloads.xiph.org/releases/vorbis/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "libvorbis-[0-9]+\\.[0-9]+\\.[0-9]+"
-  cleanup: "libvorbis-:.tar.xz"
+  extract_pattern: "libvorbis-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.xz"
+  cleanup: ""
 
 build_type: gnu_autotools
 description: "Vorbis audio codec library"

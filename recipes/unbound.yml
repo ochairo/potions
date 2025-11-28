@@ -2,8 +2,8 @@ name: unbound
 version:
   source: "url:https://nlnetlabs.nl/downloads/unbound/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "unbound-[0-9]+\\.[0-9]+\\.[0-9]+"
-  cleanup: "unbound-:.tar.gz"
+  extract_pattern: "unbound-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.gz"
+  cleanup: ""
 
 build_type: gnu_autotools
 description: "Validating, recursive, caching DNS resolver"

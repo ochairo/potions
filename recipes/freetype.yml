@@ -2,8 +2,8 @@ name: freetype
 version:
   source: "url:https://download.savannah.gnu.org/releases/freetype/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "freetype-[0-9]+\\.[0-9]+\\.[0-9]+"
-  cleanup: "freetype-:.tar.xz"
+  extract_pattern: "freetype-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.xz"
+  cleanup: ""
 
 build_type: gnu_autotools
 description: "Freely available software library to render fonts"

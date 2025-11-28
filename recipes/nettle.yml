@@ -2,8 +2,8 @@ name: nettle
 version:
   source: "url:https://ftp.gnu.org/gnu/nettle/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "nettle-[0-9]+\\.[0-9]+"
-  cleanup: "nettle-:.tar.gz"
+  extract_pattern: "nettle-([0-9]+\\.[0-9]+)\\.tar\\.gz"
+  cleanup: ""
 
 build_type: gnu_autotools
 description: "Low-level cryptographic library"

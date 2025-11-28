@@ -2,8 +2,8 @@ name: luajit
 version:
   source: "url:https://luajit.org/download.html"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "LuaJIT-[0-9]+\\.[0-9]+\\.[0-9]+"
-  cleanup: "LuaJIT-:.tar.gz"
+  extract_pattern: "LuaJIT-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.gz"
+  cleanup: ""
 
 build_type: make
 description: "Just-In-Time Compiler for Lua"

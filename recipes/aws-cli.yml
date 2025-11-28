@@ -34,7 +34,7 @@ build:
   timeout_minutes: 2
   out_of_tree: false
   custom_install: |
-    mkdir -p $PREFIX
+    mkdir -p $PREFIX/bin
     case "$(uname -s)" in
       Darwin*)
         # macOS - extract pkg contents without installing
@@ -45,8 +45,17 @@ build:
         echo "To install: sudo installer -pkg aws-cli-pkg/AWSCLIV2-*.pkg -target /" > $PREFIX/aws-cli-pkg/INSTALL.txt
         ;;
       *)
-        # Linux - package the aws directory structure
-        cp -r aws $PREFIX/
+        # Linux - extract aws binary from the aws directory structure
+        if [ -f "aws/dist/aws" ]; then
+          cp aws/dist/aws $PREFIX/bin/aws
+        elif [ -f "aws" ]; then
+          cp aws $PREFIX/bin/aws
+        else
+          echo "Error: aws binary not found"
+          ls -la
+          exit 1
+        fi
+        chmod +x $PREFIX/bin/aws
         ;;
     esac
 

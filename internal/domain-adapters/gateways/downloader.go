@@ -138,7 +138,7 @@ func (d *Downloader) DownloadArtifact(def *entities.Recipe, version, platform, o
 	} else {
 		// HTTP download (existing behavior)
 		url := d.BuildDownloadURL(def.Download.DownloadURL, version, &platformConfig)
-		
+
 		// Build mirror URL if available
 		mirrorURL := ""
 		if def.Download.Mirror != "" {

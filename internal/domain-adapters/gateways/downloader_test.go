@@ -237,5 +237,3 @@ func TestDownloader_DownloadFileWithFallback_NoMirror(t *testing.T) {
 		t.Error("downloadFileWithFallback() should fail with invalid URL and no mirror")
 	}
 }
-
-

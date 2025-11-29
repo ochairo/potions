@@ -5,10 +5,8 @@
 
 set -euo pipefail
 
-cutoff_date
 cutoff_date=$(date -u -d "3 days ago" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-3d +%Y-%m-%dT%H:%M:%SZ)
 
-failed_run_ids
 failed_run_ids=$(gh run list \
   --workflow "scheduled-release.yml" \
   --limit 100 \

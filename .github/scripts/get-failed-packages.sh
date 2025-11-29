@@ -1,13 +1,13 @@
 #!/bin/bash
-# Get recently failed packages from workflow runs (last 3 days)
+# Get recently failed packages from workflow runs (last 1 day)
 # Usage: get-failed-packages.sh
 # Output: JSON array of failed package names
 
 set -euo pipefail
 
-cutoff_date=$(date -u -d "3 days ago" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-3d +%Y-%m-%dT%H:%M:%SZ)
+cutoff_date=$(date -u -d "1 day ago" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-1d +%Y-%m-%dT%H:%M:%SZ)
 
-echo "🔍 Checking recent failures (last 3 days since $cutoff_date)..." >&2
+echo "🔍 Checking recent failures (last 1 day since $cutoff_date)..." >&2
 
 failed_run_ids=$(gh run list \
   --workflow "scheduled-release.yml" \

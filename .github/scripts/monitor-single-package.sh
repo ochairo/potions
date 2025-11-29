@@ -25,8 +25,8 @@ fi
 # Get normalized platforms
 platforms=$(.github/scripts/normalize-platforms.sh "recipes/${package}.yml")
 
-# Output package info as JSON
-jq -n \
+# Output package info as compact JSON (single line)
+jq -nc \
   --arg pkg "$package" \
   --arg ver "$version" \
   --argjson plat "$platforms" \

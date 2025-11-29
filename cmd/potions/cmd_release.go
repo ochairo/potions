@@ -400,20 +400,20 @@ func releaseFromPackageList(ctx context.Context, packagesJSON, artifactsDir, rec
 				fmt.Printf("     + %d checksums, %d SBOMs, etc.\n", checksumCount, sbomCount)
 			}
 
-		// Early validation: must have at least one tarball
-		if tarballCount == 0 {
-			errMsg := fmt.Sprintf("%s v%s - NO_TARBALLS: Found %d artifacts but no .tar.gz files",
-				pkg.Package, pkg.Version, len(artifacts))
-			fmt.Printf("  ❌ %s\n", errMsg)
-			fmt.Printf("     Possible causes:\n")
-			fmt.Printf("     - Build artifacts exceeded 500MB size limit and were filtered\n")
-			fmt.Printf("     - Build job failed or was skipped\n")
-			fmt.Printf("     - Artifacts were not uploaded correctly\n")
-			fmt.Printf("     Check build job logs for size warnings\n\n")
-			failed = append(failed, fmt.Sprintf("%s v%s", pkg.Package, pkg.Version))
-			failureDetails = append(failureDetails, errMsg)
-			continue
-		}			// Validate platforms
+			// Early validation: must have at least one tarball
+			if tarballCount == 0 {
+				errMsg := fmt.Sprintf("%s v%s - NO_TARBALLS: Found %d artifacts but no .tar.gz files",
+					pkg.Package, pkg.Version, len(artifacts))
+				fmt.Printf("  ❌ %s\n", errMsg)
+				fmt.Printf("     Possible causes:\n")
+				fmt.Printf("     - Build artifacts exceeded 500MB size limit and were filtered\n")
+				fmt.Printf("     - Build job failed or was skipped\n")
+				fmt.Printf("     - Artifacts were not uploaded correctly\n")
+				fmt.Printf("     Check build job logs for size warnings\n\n")
+				failed = append(failed, fmt.Sprintf("%s v%s", pkg.Package, pkg.Version))
+				failureDetails = append(failureDetails, errMsg)
+				continue
+			} // Validate platforms
 			validation := releaseService.ValidateRelease(recipe, pkg.Package, pkg.Version, artifacts)
 			if !validation.IsReady() {
 				errMsg := fmt.Sprintf("%s v%s - VALIDATION: %s", pkg.Package, pkg.Version, validation.ErrorMessage(pkg.Package, pkg.Version))

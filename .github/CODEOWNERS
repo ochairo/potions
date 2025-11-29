@@ -4,6 +4,21 @@
 # Default code owner for all files
 * @ochairo
 
+# Security-critical signing and attestation infrastructure (HIGHEST PRIORITY)
+.github/workflows/_scheduled-release_release-packages.yml @ochairo
+.github/workflows/slsa-provenance.yml @ochairo
+.github/scripts/sign-with-cosign.sh @ochairo
+.github/scripts/sign-with-gpg.sh @ochairo
+.github/scripts/prepare-attestations.sh @ochairo
+docs/SECURITY.md @ochairo
+.github/CODEOWNERS @ochairo
+
+# Verification and security implementations
+internal/external-adapters/cosign/ @ochairo
+internal/external-adapters/attestation/ @ochairo
+internal/external-adapters/gpg/ @ochairo
+cmd/potions/cmd_verify.go @ochairo
+
 # CI/CD pipelines - require review
 .github/workflows/ @ochairo
 .github/scripts/ @ochairo

@@ -1,0 +1,200 @@
+name: Security Audit
+
+# Weekly security audit of releases and signatures
+on:
+  schedule:
+    # Run every Monday at 9:00 UTC
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  audit-releases:
+    name: Audit Release Artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Build potions CLI
+        run: |
+          go build -v -o bin/potions ./cmd/potions
+          chmod +x bin/potions
+
+      - name: Install verification tools
+        run: |
+          # Install cosign for signature verification
+          curl -sLO "https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64"
+          sudo install cosign-linux-amd64 /usr/local/bin/cosign
+          rm cosign-linux-amd64
+
+          # Install gh CLI (should already be available)
+          gh version || { echo "gh CLI not found"; exit 1; }
+
+      - name: Audit latest releases
+        run: |
+          echo "🔍 Auditing last 10 releases for security compliance..."
+
+          # Get last 10 releases
+          RELEASES=$(gh release list --limit 10 --json tagName,assets --jq '.[] | @json')
+
+          TOTAL=0
+          PASSED=0
+          FAILED=0
+          MISSING_CHECKSUMS=0
+          MISSING_SIGS=0
+          MISSING_SBOM=0
+
+          echo "$RELEASES" | while IFS= read -r release_json; do
+            TAG=$(echo "$release_json" | jq -r '.tagName')
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📦 Auditing: $TAG"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            TOTAL=$((TOTAL + 1))
+            RELEASE_PASSED=true
+
+            # Download release assets
+            mkdir -p "audit/$TAG"
+            gh release download "$TAG" -D "audit/$TAG" 2>/dev/null || {
+              echo "❌ Failed to download release assets"
+              FAILED=$((FAILED + 1))
+              continue
+            }
+
+            # Check for required files
+            TARBALLS=$(find "audit/$TAG" -name '*.tar.gz' -type f)
+
+            if [ -z "$TARBALLS" ]; then
+              echo "⚠️  No tarballs found in release"
+              FAILED=$((FAILED + 1))
+              continue
+            fi
+
+            while IFS= read -r tarball; do
+              basename_tar=$(basename "$tarball")
+              echo ""
+              echo "🔎 Checking: $basename_tar"
+
+              # Check SHA256 checksum
+              if [ ! -f "${tarball}.sha256" ]; then
+                echo "  ❌ Missing: SHA256 checksum"
+                MISSING_CHECKSUMS=$((MISSING_CHECKSUMS + 1))
+                RELEASE_PASSED=false
+              else
+                echo "  ✅ SHA256 checksum found"
+              fi
+
+              # Check Cosign signature
+              if [ ! -f "${tarball}.sig" ] || [ ! -f "${tarball}.pem" ]; then
+                echo "  ⚠️  Missing: Cosign signature (.sig/.pem)"
+                MISSING_SIGS=$((MISSING_SIGS + 1))
+              else
+                echo "  ✅ Cosign signature found"
+              fi
+
+              # Check SBOM
+              SBOM_FILE=$(echo "$tarball" | sed 's/\.tar\.gz$/.sbom.json/')
+              if [ ! -f "$SBOM_FILE" ]; then
+                echo "  ⚠️  Missing: SBOM"
+                MISSING_SBOM=$((MISSING_SBOM + 1))
+              else
+                echo "  ✅ SBOM found"
+              fi
+
+              # Verify checksum
+              if [ -f "${tarball}.sha256" ]; then
+                if (cd "audit/$TAG" && sha256sum -c "$(basename "${tarball}.sha256")" 2>/dev/null | grep -q "OK"); then
+                  echo "  ✅ SHA256 verification passed"
+                else
+                  echo "  ❌ SHA256 verification FAILED"
+                  RELEASE_PASSED=false
+                fi
+              fi
+            done <<< "$TARBALLS"
+
+            if [ "$RELEASE_PASSED" = true ]; then
+              echo ""
+              echo "✅ Release $TAG: PASSED"
+              PASSED=$((PASSED + 1))
+            else
+              echo ""
+              echo "❌ Release $TAG: FAILED"
+              FAILED=$((FAILED + 1))
+            fi
+
+            # Cleanup
+            rm -rf "audit/$TAG"
+          done
+
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 Security Audit Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Total releases audited: $TOTAL"
+          echo "✅ Passed: $PASSED"
+          echo "❌ Failed: $FAILED"
+          echo ""
+          echo "Missing security artifacts:"
+          echo "  - Checksums: $MISSING_CHECKSUMS"
+          echo "  - Signatures: $MISSING_SIGS"
+          echo "  - SBOMs: $MISSING_SBOM"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          if [ "$FAILED" -gt 0 ]; then
+            echo ""
+            echo "⚠️  WARNING: Some releases failed security audit"
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create audit report
+        if: always()
+        run: |
+          cat > audit-report.md <<'EEOF'
+          # Security Audit Report
+
+          **Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Repository**: ${{ github.repository }}
+
+          ## Summary
+
+          This automated security audit verifies that all releases contain required security artifacts:
+          - ✅ SHA256 checksums
+          - ✅ Cosign signatures (keyless)
+          - ✅ SBOM files
+
+          ## Findings
+
+          See workflow logs for detailed results.
+
+          ## Recommendations
+
+          - Enable GitHub secret scanning and push protection
+          - Configure CODEOWNERS for signing scripts
+          - Set up environment protection for production releases
+          - Rotate GPG keys annually
+
+          EEOF
+
+          echo "📄 Audit report created"
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: security-audit-report
+          path: audit-report.md
+          retention-days: 90

@@ -48,9 +48,13 @@ This project implements several security measures:
 
 - **Checksums:** SHA256 and SHA512 checksums for all binaries
 - **SBOM:** Software Bill of Materials (CycloneDX format) for dependency tracking
-- **Provenance:** SLSA provenance attestations for build reproducibility
-- **GPG Signatures:** (Coming soon) GPG signatures for release artifacts
+- **Provenance:** SLSA Level 3 provenance attestations for build reproducibility
+- **Cosign Signatures:** Keyless Sigstore/Cosign signatures for all release artifacts
+- **GitHub Attestations:** SLSA provenance attestations generated via GitHub's native attestation API
+- **GPG Signatures:** Optional GPG signatures for release artifacts (configurable)
 - **Vulnerability Scanning:** Automated OSV vulnerability scanning for all packages
+- **Artifact Verification:** Automated checksum verification before release
+- **Runtime Verification:** `potions verify` command supports GPG, Cosign, and attestation verification
 
 ### Code Security
 
@@ -58,22 +62,50 @@ This project implements several security measures:
 - **Dependency Review:** Automated dependency vulnerability scanning
 - **Secret Scanning:** Gitleaks for credential detection
 - **License Compliance:** Automated license checking for dependencies
+- **CODEOWNERS:** Security-critical files require maintainer approval
+- **Weekly Security Audits:** Automated auditing of release artifacts
 
 ### Infrastructure Security
 
-- **GitHub Actions:** All workflows use pinned dependencies
+- **GitHub Actions:** All workflows use pinned commit SHAs (not tags)
 - **Least Privilege:** Minimal permissions for CI/CD workflows
 - **Artifact Integrity:** All build artifacts are verified before distribution
+- **Environment Protection:** Production releases can require manual approval
+- **Secret Protection:** GPG keys stored in protected GitHub environment
+- **Artifact Retention:** 3-day retention for builds, 30-day for audit trails
 
 ## Security Best Practices for Users
 
 When using binaries from this project:
 
 1. **Verify Checksums:** Always verify SHA256/SHA512 checksums after download
-2. **Check SBOM:** Review the Software Bill of Materials for dependencies
-3. **Review Provenance:** Verify the build provenance attestation
-4. **Stay Updated:** Use the latest version to get security patches
-5. **Report Issues:** If you find something suspicious, report it immediately
+   ```bash
+   potions verify package.tar.gz --checksum package.tar.gz.sha256
+   ```
+
+2. **Verify Signatures:** Verify Cosign keyless signatures
+   ```bash
+   potions verify package.tar.gz --cosign-sig package.tar.gz.sig --cosign-cert package.tar.gz.pem
+   ```
+
+3. **Verify Attestations:** Verify GitHub SLSA attestations
+   ```bash
+   potions verify package.tar.gz --attest-file package.tar.gz.attestation.jsonl --owner ochairo --repo potions
+   ```
+
+4. **Verify All:** Use `--all` flag to automatically verify all available signatures
+   ```bash
+   potions verify package.tar.gz --all --owner ochairo --repo potions
+   ```
+
+5. **Check SBOM:** Review the Software Bill of Materials for dependencies
+   ```bash
+   cat package.sbom.json | jq '.components[] | {name, version}'
+   ```
+
+6. **Review Provenance:** Verify the build provenance attestation
+7. **Stay Updated:** Use the latest version to get security patches
+8. **Report Issues:** If you find something suspicious, report it immediately
 
 ## Known Security Considerations
 

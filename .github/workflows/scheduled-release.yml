@@ -32,6 +32,8 @@ permissions:
   contents: write # Required for creating releases and uploading assets
   packages: write # Required for package operations
   actions: read # Required for downloading artifacts from workflow runs
+  id-token: write # Required for Sigstore/Cosign keyless signing and GitHub Attestations
+  attestations: write # Required for generating GitHub Attestations
 
 # Allow concurrent runs for different packages, but prevent duplicates of the same package
 concurrency:

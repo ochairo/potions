@@ -99,7 +99,7 @@ jobs:
           find current-artifacts -name '*.tar.gz' -type f 2>/dev/null | while read -r tarball; do
             if [ -f "${tarball}.sha256" ]; then
               echo "🔍 Verifying $(basename "$tarball")..."
-              if ./bin/potions verify "$tarball" --checksum "${tarball}.sha256"; then
+              if ./bin/potions verify --checksum "${tarball}.sha256" "$tarball"; then
                 echo "✅ Verified: $(basename "$tarball")"
                 echo "verified" >> "$CORRUPTED_FILES"
               else
@@ -142,6 +142,7 @@ jobs:
             "${{ secrets.GPG_PASSPHRASE }}"
 
       - name: Generate GitHub Attestations
+        if: false  # Disabled: gh CLI version doesn't support 'gh attest' command yet
         run: |
           # Find all artifacts and generate attestations
           find current-artifacts -type f \( -name '*.tar.gz' -o -name '*.sha256' -o -name '*.sbom.json' \) | while read -r artifact; do

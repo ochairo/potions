@@ -92,13 +92,17 @@ jobs:
 
           find current-artifacts -name '*.tar.gz' -type f 2>/dev/null | while read -r tarball; do
             if [ -f "${tarball}.sha256" ]; then
-              if ./bin/potions verify "$tarball" --checksum "${tarball}.sha256" 2>/dev/null; then
+              echo "🔍 Verifying $(basename "$tarball")..."
+              if ./bin/potions verify "$tarball" --checksum "${tarball}.sha256"; then
+                echo "✅ Verified: $(basename "$tarball")"
                 echo "verified" >> "$CORRUPTED_FILES"
               else
                 echo "❌ Checksum verification failed for $(basename "$tarball")"
                 echo "failed" >> "$CORRUPTED_FILES"
                 rm -f "$tarball" "${tarball}.sha256"
               fi
+            else
+              echo "⚠️  No checksum file for $(basename "$tarball")"
             fi
           done
 
@@ -130,8 +134,7 @@ jobs:
           # Find all artifacts and generate attestations
           find current-artifacts -type f \( -name '*.tar.gz' -o -name '*.sha256' -o -name '*.sbom.json' \) | while read -r artifact; do
             echo "🔐 Attesting: $(basename "$artifact")"
-            gh attestation attest \
-              --predicate-type "https://slsa.dev/provenance/v1" \
+            gh attest \
               --bundle "${artifact}.attestation.jsonl" \
               "$artifact" || echo "⚠️  Attestation failed for $(basename "$artifact")"
           done

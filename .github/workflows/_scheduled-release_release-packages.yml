@@ -45,12 +45,45 @@ jobs:
           chmod +x bin/potions
 
       - name: Wait for artifact uploads
+        id: wait-artifacts
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: .github/scripts/wait-for-artifacts.sh '${{ inputs.packages }}' '${{ inputs.run_id }}'
 
+      - name: Create failure tracking for artifact wait timeout
+        if: steps.wait-artifacts.outcome == 'failure'
+        run: |
+          echo "⚠️  Artifact wait failed - creating failure tracking for all packages"
+
+          # Extract package names from input
+          PACKAGES='${{ inputs.packages }}'
+          FAILED_PACKAGES=$(echo "$PACKAGES" | jq -c '[.[].package]')
+
+          echo "Packages that failed artifact wait: $FAILED_PACKAGES"
+          echo "$FAILED_PACKAGES" > failure-tracking.json
+
+          # Also create a summary
+          echo "Artifact wait timeout - no releases attempted" > release-failures.txt
+          echo "$PACKAGES" | jq -r '.[] | "\(.package) v\(.version) - ERROR: Artifact wait timeout"' >> release-failures.txt
+
+      - name: Upload early failure tracking
+        if: steps.wait-artifacts.outcome == 'failure'
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: failure-tracking-release
+          path: failure-tracking.json
+          retention-days: 3
+
+      - name: Exit if artifact wait failed
+        if: steps.wait-artifacts.outcome == 'failure'
+        run: |
+          echo "❌ Stopping workflow - artifacts not ready"
+          exit 1
+
       - name: Check GitHub API rate limits
+        if: steps.wait-artifacts.outcome == 'success'
         run: |
           echo "🔍 Checking GitHub API rate limits..."
           RATE_INFO=$(gh api rate_limit --jq '.rate')
@@ -74,15 +107,18 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download artifacts
+        if: steps.wait-artifacts.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: .github/scripts/download-artifacts.sh '${{ inputs.run_id }}' current-artifacts
 
       - name: Flatten artifacts directory
+        if: steps.wait-artifacts.outcome == 'success'
         run: .github/scripts/flatten-artifacts.sh current-artifacts
 
       - name: Verify artifact integrity
+        if: steps.wait-artifacts.outcome == 'success'
         run: |
           echo "🔐 Verifying artifact checksums..."
 
@@ -129,12 +165,13 @@ jobs:
           done
 
       - name: Sign artifacts with Cosign (Sigstore)
+        if: steps.wait-artifacts.outcome == 'success'
         run: .github/scripts/sign-with-cosign.sh current-artifacts
         env:
           COSIGN_EXPERIMENTAL: "1" # Enable keyless signing
 
       - name: Sign artifacts with GPG
-        if: vars.GPG_SIGNING_ENABLED == 'true'
+        if: steps.wait-artifacts.outcome == 'success' && vars.GPG_SIGNING_ENABLED == 'true'
         run: |
           .github/scripts/sign-with-gpg.sh \
             current-artifacts \
@@ -143,6 +180,7 @@ jobs:
 
       - name: Generate GitHub Attestations
         if: false # Disabled: gh CLI version doesn't support 'gh attest' command yet
+        # Additional condition needed: steps.wait-artifacts.outcome == 'success'
         run: |
           # Find all artifacts and generate attestations
           find current-artifacts -type f \( -name '*.tar.gz' -o -name '*.sha256' -o -name '*.sbom.json' \) | while read -r artifact; do
@@ -155,6 +193,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Process releases
+        if: steps.wait-artifacts.outcome == 'success'
         run: |
           echo "🚀 Processing package releases..."
 

@@ -18,6 +18,8 @@ on:
 permissions:
   contents: write
   actions: read
+  id-token: write # Required for GitHub Attestations and Sigstore signing
+  attestations: write # Required for artifact attestations
 
 jobs:
   release-packages:
@@ -109,6 +111,32 @@ jobs:
           if [ "$FAILED" -gt 0 ]; then
             echo "⚠️  Warning: $FAILED corrupted artifacts removed"
           fi
+
+      - name: Sign artifacts with Cosign (Sigstore)
+        run: .github/scripts/sign-with-cosign.sh current-artifacts
+        env:
+          COSIGN_EXPERIMENTAL: "1" # Enable keyless signing
+
+      - name: Sign artifacts with GPG
+        if: vars.GPG_SIGNING_ENABLED == 'true'
+        run: |
+          .github/scripts/sign-with-gpg.sh \
+            current-artifacts \
+            "${{ secrets.GPG_PRIVATE_KEY }}" \
+            "${{ secrets.GPG_PASSPHRASE }}"
+
+      - name: Generate GitHub Attestations
+        run: |
+          # Find all artifacts and generate attestations
+          find current-artifacts -type f \( -name '*.tar.gz' -o -name '*.sha256' -o -name '*.sbom.json' \) | while read -r artifact; do
+            echo "🔐 Attesting: $(basename "$artifact")"
+            gh attestation attest \
+              --predicate-type "https://slsa.dev/provenance/v1" \
+              --bundle "${artifact}.attestation.jsonl" \
+              "$artifact" || echo "⚠️  Attestation failed for $(basename "$artifact")"
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Process releases
         run: |

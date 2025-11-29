@@ -460,6 +460,46 @@ func GetVersion() string {
 - **No hardcoded secrets:** Use environment variables or configuration
 - **SBOM generation:** Create Software Bill of Materials for all builds
 
+## Shell Script Guidelines
+
+- **NEVER use heredocs (EOF) in shell scripts:** They cause terminal disconnection issues
+- **Use single quotes for multi-line strings:** Prevents variable expansion issues
+- **Avoid complex heredoc patterns:** Use echo or printf instead
+- **File creation:** Use `echo "content" > file` or Python/other tools for multi-line content
+- **If heredoc is absolutely necessary:** Use simple delimiters and test thoroughly
+
+### Shell vs Go Decision Matrix
+
+**Use Go for:**
+- Core business logic (verification, validation, orchestration)
+- Cross-platform compatibility (Linux, macOS, Windows)
+- Type safety and testability
+- Complex data structures and error handling
+- Integration with Go ecosystem (pure Go libraries)
+- Local CLI commands that users run
+- Reusable components across different contexts
+
+**Use Shell Scripts for:**
+- GitHub Actions orchestration (CI/CD glue code)
+- External tool orchestration (calling multiple CLI tools)
+- Batch file system operations (find, xargs, etc.)
+- Simple conditional workflow steps
+- Environment-specific setup (installing tools in CI)
+- When shell is more concise than Go (< 20 lines)
+
+**Current Best Practice:**
+- **Go Commands** = Reusable, testable, works locally and in CI
+  - Example: `potions sign --cosign dist/`
+  - Example: `potions verify --all mypackage.tar.gz`
+- **Shell Scripts** = CI batch orchestration, calls Go commands
+  - Example: `.github/scripts/sign-with-cosign.sh` installs cosign, then signs batches
+  - Example: `.github/scripts/wait-for-artifacts.sh` polls GitHub API
+
+**Migration Path:**
+- Implement logic in Go first (in `cmd/potions/` or `internal/`)
+- Create thin shell script wrapper for CI if needed
+- Shell scripts should be < 100 lines, mostly calling Go commands or external tools
+
 ## When in Doubt
 
 1. Check existing code for similar patterns

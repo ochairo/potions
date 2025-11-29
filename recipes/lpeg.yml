@@ -9,7 +9,7 @@ build_type: make
 description: "Pattern-matching library for Lua"
 
 download:
-  download_url: "http://www.inf.puc-rio.br/~roberto/lpeg/lpeg-{version}.tar.gz"
+  download_url: "https://www.inf.puc-rio.br/~roberto/lpeg/lpeg-{version}.tar.gz"
   platforms:
     darwin-x86_64:
     darwin-arm64:

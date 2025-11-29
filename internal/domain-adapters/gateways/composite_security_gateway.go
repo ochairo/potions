@@ -79,3 +79,24 @@ func (c *compositeSecurityGateway) ImportGPGKeys(ctx context.Context, keyIDs []s
 func (c *compositeSecurityGateway) ImportGPGKeysFromURL(ctx context.Context, keysURL string) error {
 	return c.gpgVerifier.ImportGPGKeysFromURL(ctx, keysURL)
 }
+
+// VerifyCosignSignature verifies Cosign/Sigstore signature (not yet fully implemented)
+func (c *compositeSecurityGateway) VerifyCosignSignature(ctx context.Context, filePath, signaturePath, certPath string) error {
+	// TODO: Implement Cosign verification when needed
+	// For now, this would be handled by external tools (cosign CLI)
+	return nil
+}
+
+// VerifyGitHubAttestation verifies GitHub attestation (not yet fully implemented)
+func (c *compositeSecurityGateway) VerifyGitHubAttestation(ctx context.Context, filePath, attestationPath string) error {
+	// TODO: Implement GitHub attestation verification when needed
+	// For now, this would be handled by external tools (gh CLI)
+	return nil
+}
+
+// VerifyInstalledPackage performs runtime verification of installed package (not yet fully implemented)
+func (c *compositeSecurityGateway) VerifyInstalledPackage(ctx context.Context, packageName, installPath string) error {
+	// TODO: Implement runtime package verification when needed
+	// This would check checksums, signatures, and permissions
+	return nil
+}

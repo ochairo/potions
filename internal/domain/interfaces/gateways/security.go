@@ -23,4 +23,13 @@ type SecurityGateway interface {
 	VerifyGPGSignature(ctx context.Context, filePath, sigURL string) error
 	ImportGPGKeys(ctx context.Context, keyIDs []string) error
 	ImportGPGKeysFromURL(ctx context.Context, keysURL string) error
+
+	// Cosign/Sigstore verification
+	VerifyCosignSignature(ctx context.Context, filePath, signaturePath, certPath string) error
+
+	// GitHub Attestation verification
+	VerifyGitHubAttestation(ctx context.Context, filePath, attestationPath string) error
+
+	// Runtime verification (post-install checks)
+	VerifyInstalledPackage(ctx context.Context, packageName, installPath string) error
 }

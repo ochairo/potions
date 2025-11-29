@@ -33,9 +33,11 @@ build:
     mkdir -p "$PREFIX/sdkman"
     mkdir -p "$PREFIX/bin"
 
-    # Download and install SDKMAN
+    # Download and install SDKMAN (securely)
     export SDKMAN_DIR="$PREFIX/sdkman"
-    curl -s "https://get.sdkman.io" | bash
+    curl -fsSL "https://get.sdkman.io" -o install.sh
+    bash install.sh
+    rm install.sh
 
     # Create wrapper script
     cat > "$PREFIX/bin/sdk" << 'WRAPPER_EOF'

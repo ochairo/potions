@@ -1,0 +1,28 @@
+name: SLSA Provenance Generator
+
+on:
+  workflow_call:
+    inputs:
+      artifact-name:
+        description: "Name of the artifact to generate provenance for"
+        required: true
+        type: string
+      artifact-path:
+        description: "Path to the artifact file"
+        required: true
+        type: string
+
+permissions: read-all
+
+jobs:
+  # Use SLSA generic generator for Level 3 provenance
+  provenance:
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    with:
+      base64-subjects: "${{ inputs.artifact-name }}"
+      upload-assets: true
+      provenance-name: "${{ inputs.artifact-name }}.intoto.jsonl"

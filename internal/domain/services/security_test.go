@@ -46,6 +46,18 @@ func (m *mockSecurityGateway) ImportGPGKeysFromURL(_ context.Context, _ string) 
 	return nil
 }
 
+func (m *mockSecurityGateway) VerifyCosignSignature(_ context.Context, _, _, _ string) error {
+	return nil
+}
+
+func (m *mockSecurityGateway) VerifyGitHubAttestation(_ context.Context, _, _ string) error {
+	return nil
+}
+
+func (m *mockSecurityGateway) VerifyInstalledPackage(_ context.Context, _, _ string) error {
+	return nil
+}
+
 // TestCalculateSecurityScore tests the security score calculation logic
 func TestCalculateSecurityScore(t *testing.T) {
 	tests := []struct {

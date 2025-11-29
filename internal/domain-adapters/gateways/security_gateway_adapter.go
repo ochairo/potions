@@ -35,7 +35,7 @@ func NewSecurityGatewayAdapter(logger interfaces.Logger) *SecurityGatewayAdapter
 }
 
 // VerifyChecksum verifies file checksum
-func (s *SecurityGatewayAdapter) VerifyChecksum(ctx context.Context, filePath, expectedSum string) error {
+func (s *SecurityGatewayAdapter) VerifyChecksum(_ context.Context, filePath, expectedSum string) error {
 	s.logger.Info("verifying checksum",
 		interfaces.F("file", filePath),
 		interfaces.F("expected", expectedSum[:16]+"..."),
@@ -104,7 +104,7 @@ func (s *SecurityGatewayAdapter) VerifyGitHubAttestation(ctx context.Context, fi
 }
 
 // VerifyInstalledPackage performs runtime verification of installed package
-func (s *SecurityGatewayAdapter) VerifyInstalledPackage(ctx context.Context, packageName, installPath string) error {
+func (s *SecurityGatewayAdapter) VerifyInstalledPackage(_ context.Context, packageName, installPath string) error {
 	s.logger.Info("verifying installed package",
 		interfaces.F("package", packageName),
 		interfaces.F("path", installPath),
@@ -122,19 +122,19 @@ func (s *SecurityGatewayAdapter) VerifyInstalledPackage(ctx context.Context, pac
 }
 
 // ScanWithOSV scans artifact with OSV
-func (s *SecurityGatewayAdapter) ScanWithOSV(ctx context.Context, artifact *entities.Artifact) (*entities.SecurityReport, error) {
+func (s *SecurityGatewayAdapter) ScanWithOSV(_ context.Context, _ *entities.Artifact) (*entities.SecurityReport, error) {
 	// Forward to existing implementation
 	return nil, fmt.Errorf("not implemented: forward to existing OSV scanner")
 }
 
 // GenerateSBOM generates Software Bill of Materials
-func (s *SecurityGatewayAdapter) GenerateSBOM(ctx context.Context, artifact *entities.Artifact) (*entities.SBOM, error) {
+func (s *SecurityGatewayAdapter) GenerateSBOM(_ context.Context, _ *entities.Artifact) (*entities.SBOM, error) {
 	// Forward to existing implementation
 	return nil, fmt.Errorf("not implemented: forward to existing SBOM generator")
 }
 
 // AnalyzeBinaryHardening analyzes binary hardening features
-func (s *SecurityGatewayAdapter) AnalyzeBinaryHardening(ctx context.Context, binaryPath, platform string) (*entities.BinaryAnalysis, error) {
+func (s *SecurityGatewayAdapter) AnalyzeBinaryHardening(_ context.Context, _, _ string) (*entities.BinaryAnalysis, error) {
 	// Forward to existing implementation
 	return nil, fmt.Errorf("not implemented: forward to existing binary analyzer")
 }

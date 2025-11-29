@@ -214,10 +214,7 @@ func TestDownloader_DownloadFileWithFallback_MirrorUsed(t *testing.T) {
 
 	// The error message should indicate both attempts failed or mention fallback
 	errMsg := err.Error()
-	hasFailed := false
-	if len(errMsg) > 0 {
-		hasFailed = true // Any non-empty error is a failure message
-	}
+	hasFailed := len(errMsg) > 0 // Any non-empty error is a failure message
 	if !hasFailed {
 		t.Errorf("downloadFileWithFallback() should return an error message")
 	}

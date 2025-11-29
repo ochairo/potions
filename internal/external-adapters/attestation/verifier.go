@@ -18,7 +18,7 @@ func NewVerifier() *Verifier {
 }
 
 // VerifyAttestation verifies a GitHub Attestation
-func (v *Verifier) VerifyAttestation(ctx context.Context, filePath, attestationPath string) error {
+func (v *Verifier) VerifyAttestation(_ context.Context, filePath, attestationPath string) error {
 	if _, err := exec.LookPath("gh"); err != nil {
 		return fmt.Errorf("gh CLI not installed: %w (install from https://cli.github.com)", err)
 	}
@@ -31,6 +31,7 @@ func (v *Verifier) VerifyAttestation(ctx context.Context, filePath, attestationP
 		return fmt.Errorf("attestation file not found: %w", err)
 	}
 
+	// #nosec G304 -- attestationPath is user-provided path for verification purposes
 	attestationData, err := os.ReadFile(attestationPath)
 	if err != nil {
 		return fmt.Errorf("failed to read attestation: %w", err)

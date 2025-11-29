@@ -250,7 +250,7 @@ func (d *Downloader) downloadFileWithFallback(primaryURL, mirrorURL, dest string
 			return nil
 		}
 		// Return original error (primary) but mention both failed
-		return fmt.Errorf("primary failed: %w (mirror also failed: %v)", err, mirrorErr)
+		return fmt.Errorf("primary failed: %w (mirror also failed: %w)", err, mirrorErr)
 	}
 
 	// No mirror or mirror is same as primary

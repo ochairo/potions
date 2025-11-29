@@ -1,3 +1,7 @@
 # Gitleaks ignore file
 
 README.md:sidekiq-secret:39
+
+# Secret scanning pattern documentation (contains example regex patterns, not real secrets)
+.github/secret-scanning-patterns.md:private-key:9
+.github/secret-scanning-patterns.md:private-key:15

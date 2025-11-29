@@ -465,12 +465,17 @@ func TestCLI_Verify(t *testing.T) {
 	}{
 		{
 			name:    "verify valid checksum",
-			args:    []string{"verify", testFile},
+			args:    []string{"verify", "--checksum", checksumFile, testFile},
 			wantErr: false,
 		},
 		{
 			name:    "verify with explicit checksum file",
-			args:    []string{"verify", testFile, "--checksum", checksumFile},
+			args:    []string{"verify", "--checksum", checksumFile, testFile},
+			wantErr: false,
+		},
+		{
+			name:    "verify with auto-detect",
+			args:    []string{"verify", "--all", testFile},
 			wantErr: false,
 		},
 		{

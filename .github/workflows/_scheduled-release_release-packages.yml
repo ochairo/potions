@@ -142,7 +142,7 @@ jobs:
             "${{ secrets.GPG_PASSPHRASE }}"
 
       - name: Generate GitHub Attestations
-        if: false  # Disabled: gh CLI version doesn't support 'gh attest' command yet
+        if: false # Disabled: gh CLI version doesn't support 'gh attest' command yet
         run: |
           # Find all artifacts and generate attestations
           find current-artifacts -type f \( -name '*.tar.gz' -o -name '*.sha256' -o -name '*.sbom.json' \) | while read -r artifact; do
@@ -219,12 +219,40 @@ jobs:
           fi
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-          # Exit with error if all releases failed
+          # Note: Don't exit here - let the "Process releases" step failure propagate
+          # This allows failure tracking to be uploaded even when all releases fail
           if [ "$SUCCESS_COUNT" -eq 0 ] && [ "$FAILURE_COUNT" -gt 0 ]; then
             echo ""
-            echo "⚠️  Error: All release attempts failed"
-            exit 1
+            echo "⚠️  Warning: All release attempts failed"
           fi
+
+      - name: Create failure tracking for failed releases
+        if: always()
+        run: |
+          # Extract package names from failure messages and create tracking JSON
+          if [ -f release-failures.txt ] && [ -s release-failures.txt ]; then
+            echo "📝 Creating failure tracking for failed releases..."
+
+            # Parse failures and extract package names
+            # Format: "package v1.2.3 - ERROR: message"
+            FAILED_PACKAGES=$(cat release-failures.txt | sed -E 's/ v[0-9].* -.*//' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+            echo "Failed packages: $FAILED_PACKAGES"
+            echo "$FAILED_PACKAGES" > failure-tracking.json
+
+            echo "✅ Failure tracking created"
+          else
+            echo "[]" > failure-tracking.json
+            echo "ℹ️  No failures to track"
+          fi
+
+      - name: Upload failure tracking
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: failure-tracking-release
+          path: failure-tracking.json
+          retention-days: 3
 
       - name: Upload release report
         if: always()

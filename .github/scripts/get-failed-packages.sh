@@ -31,7 +31,7 @@ processed_runs=0
 for run_id in $failed_run_ids; do
   echo "  Checking run $run_id..." >&2
 
-  # Download failure artifacts (pattern without .txt extension)
+  # Download build failure artifacts (pattern without .txt extension)
   if gh run download "$run_id" --pattern "*-failures" --dir "temp-$run_id" 2>/dev/null; then
     # Parse all failure files: extract package name from "package v1.0.0 (platform)" format
     artifacts=$(find "temp-$run_id" -name "*.txt" -type f 2>/dev/null)
@@ -47,6 +47,17 @@ for run_id in $failed_run_ids; do
     fi
 
     processed_runs=$((processed_runs + 1))
+  fi
+
+  # Download release failure tracking (JSON format)
+  if gh run download "$run_id" --pattern "failure-tracking-release" --dir "temp-release-$run_id" 2>/dev/null; then
+    tracking_file="temp-release-$run_id/failure-tracking.json"
+    if [ -f "$tracking_file" ] && [ -s "$tracking_file" ]; then
+      echo "  Found release failure tracking" >&2
+      # Extract package names from JSON array
+      jq -r '.[]' "$tracking_file" 2>/dev/null || true
+    fi
+    rm -rf "temp-release-$run_id"
   fi
 
   rm -rf "temp-$run_id"

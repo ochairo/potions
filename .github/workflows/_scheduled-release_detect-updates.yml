@@ -66,7 +66,7 @@ jobs:
       - name: Get recently failed packages
         id: get-failed-packages
         run: |
-          echo "🔍 Checking recent workflow failures (last 3 days)..."
+          echo "🔍 Checking recent workflow failures (last 1 day)..."
           FAILED_PACKAGES=$(.github/scripts/get-failed-packages.sh)
           FAILED_COUNT=$(echo "$FAILED_PACKAGES" | jq 'length')
 

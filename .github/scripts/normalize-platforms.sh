@@ -6,7 +6,7 @@
 set -euo pipefail
 
 recipe_file="$1"
-platforms=$(yq eval '.download.platforms | keys' "$recipe_file" 2>/dev/null | grep -v '^$' | sed 's/^- //' | tr '\n' ' ' || echo "")
+platforms=$(yq eval '.download.platforms | keys' "$recipe_file" 2>/dev/null | grep -v '^$' | grep -v '^#' | sed 's/^- //' | tr '\n' ' ' || echo "")
 
 normalized="[]"
 for platform in $platforms; do

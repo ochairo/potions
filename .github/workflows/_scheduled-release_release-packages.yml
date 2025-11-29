@@ -232,15 +232,28 @@ jobs:
           # Extract package names from failure messages and create tracking JSON
           if [ -f release-failures.txt ] && [ -s release-failures.txt ]; then
             echo "📝 Creating failure tracking for failed releases..."
+            echo ""
+            echo "Raw failures:"
+            cat release-failures.txt
+            echo ""
 
             # Parse failures and extract package names
             # Format: "package v1.2.3 - ERROR: message"
-            FAILED_PACKAGES=$(cat release-failures.txt | sed -E 's/ v[0-9].* -.*//' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            # Extract package name, remove duplicates, create JSON array
+            FAILED_PACKAGES=$(cat release-failures.txt | \
+              sed -E 's/ v[0-9].* -.*//' | \
+              grep -v '^$' | \
+              sort -u | \
+              jq -R -s -c 'split("\n") | map(select(length > 0))')
 
-            echo "Failed packages: $FAILED_PACKAGES"
-            echo "$FAILED_PACKAGES" > failure-tracking.json
-
-            echo "✅ Failure tracking created"
+            if [ "$FAILED_PACKAGES" = "[]" ] || [ -z "$FAILED_PACKAGES" ]; then
+              echo "⚠️  Warning: Failed to parse any package names from failures"
+              echo "[]" > failure-tracking.json
+            else
+              echo "Extracted packages: $FAILED_PACKAGES"
+              echo "$FAILED_PACKAGES" > failure-tracking.json
+              echo "✅ Failure tracking created"
+            fi
           else
             echo "[]" > failure-tracking.json
             echo "ℹ️  No failures to track"

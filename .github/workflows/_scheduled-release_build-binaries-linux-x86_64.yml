@@ -16,8 +16,6 @@ jobs:
     name: Build Binaries (Linux x86_64)
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    env:
-      GO_VERSION: "1.24"
     strategy:
       fail-fast: false
       max-parallel: 10
@@ -45,12 +43,6 @@ jobs:
             fi
           done
 
-      - name: Setup Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-
       - name: Check available disk space
         run: |
           echo "📊 Available disk space:"
@@ -59,31 +51,22 @@ jobs:
           echo "📊 Free memory:"
           free -h || true
 
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
       - name: Build potions CLI
         run: |
           go build -v -o bin/potions ./cmd/potions
           chmod +x bin/potions
-          echo "📦 potions CLI built: $(./bin/potions --version 2>&1 || echo 'version unknown')"
 
       - name: Filter packages for this platform (Linux x86_64)
         id: filter-packages
         run: |
-          PLATFORM="linux-x86_64"
-          ALL_PACKAGES='${{ toJson(matrix.batch.packages) }}'
-
-          # Filter packages that support this platform
-          FILTERED_PACKAGES=$(echo "$ALL_PACKAGES" | jq -c '[.[] | select(.platforms | any(. == "linux-x86_64" or . == "linux-amd64"))]')
-
-          FILTERED_COUNT=$(echo "$FILTERED_PACKAGES" | jq 'length')
-          TOTAL_COUNT=$(echo "$ALL_PACKAGES" | jq 'length')
-
-          if [ $FILTERED_COUNT -lt $TOTAL_COUNT ]; then
-            SKIPPED=$(( TOTAL_COUNT - FILTERED_COUNT ))
-            echo "⏭️  Skipping $SKIPPED packages that don't support $PLATFORM"
-            echo "$ALL_PACKAGES" | jq -r '.[] | select(.platforms | any(. == "linux-x86_64" or . == "linux-amd64") | not) | "  - \(.package) (supports: \(.platforms | join(", ")))"'
-          fi
+          FILTERED_PACKAGES=$(.github/scripts/filter-packages-by-platform.sh "linux-x86_64" '${{ toJson(matrix.batch.packages) }}')
           echo "filtered_packages=$FILTERED_PACKAGES" >> $GITHUB_OUTPUT
-          echo "📦 Building $FILTERED_COUNT/$TOTAL_COUNT packages for $PLATFORM"
 
       - name: Build all packages in batch (Linux x86_64 only)
         if: fromJson(steps.filter-packages.outputs.filtered_packages)[0] != null
@@ -102,39 +85,7 @@ jobs:
 
       - name: Create failure tracking artifact
         if: always()
-        run: |
-          # Extract failed package names from all failure files
-          FAILED_PACKAGES="[]"
-
-          if [ -f build-failures.txt ] && [ -s build-failures.txt ]; then
-            FAILED=$(cat build-failures.txt | sed 's/^ *//' | jq -R . | jq -s -c .)
-            FAILED_PACKAGES=$(echo "$FAILED_PACKAGES" | jq -c ". += $FAILED")
-          fi
-
-          if [ -f build-failures-timeout.txt ] && [ -s build-failures-timeout.txt ]; then
-            FAILED=$(cat build-failures-timeout.txt | sed 's/^ *//' | jq -R . | jq -s -c .)
-            FAILED_PACKAGES=$(echo "$FAILED_PACKAGES" | jq -c ". += $FAILED")
-          fi
-
-          if [ -f build-failures-error.txt ] && [ -s build-failures-error.txt ]; then
-            FAILED=$(cat build-failures-error.txt | sed 's/^ *//' | jq -R . | jq -s -c .)
-            FAILED_PACKAGES=$(echo "$FAILED_PACKAGES" | jq -c ". += $FAILED")
-          fi
-
-          # Deduplicate and sort
-          FAILED_PACKAGES=$(echo "$FAILED_PACKAGES" | jq -c 'unique | sort')
-
-          # Create tracking file
-          cat > failure-tracking.json <<EOF
-          {
-            "platform": "linux-x86_64",
-            "batch_id": "${{ matrix.batch.id }}",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "failed_packages": $FAILED_PACKAGES
-          }
-          EOF
-
-          cat failure-tracking.json
+        run: .github/scripts/create-failure-tracking.sh "linux-x86_64" "${{ matrix.batch.id }}"
 
       - name: Upload failure tracking
         if: always()

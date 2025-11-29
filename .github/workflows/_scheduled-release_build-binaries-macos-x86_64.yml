@@ -14,10 +14,8 @@ permissions:
 jobs:
   build-binaries-macos-x86_64:
     name: Build Binaries (macOS Intel)
-    runs-on: macos-15-intel
+    runs-on: macos-13
     timeout-minutes: 360
-    env:
-      GO_VERSION: "1.24"
     strategy:
       fail-fast: false
       max-parallel: 10
@@ -46,25 +44,24 @@ jobs:
             fi
           done
 
-      - name: Setup Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-
       - name: Check available disk space
         run: |
           echo "📊 Available disk space:"
           df -h
           echo ""
           echo "📊 Free memory:"
-          vm_stat | perl -ne '/page size of (\d+)/ and $size=$1; /Pages\s+([^:]+)[^\d]+(\d+)/ and printf("%16s: %8.2f MB\n", "$1", $2 * $size / 1048576);'
+          vm_stat || true
+
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
 
       - name: Build potions CLI
         run: |
           go build -v -o bin/potions ./cmd/potions
           chmod +x bin/potions
-          echo "📦 potions CLI built: $(./bin/potions --version 2>&1 || echo 'version unknown')"
 
       - name: Filter packages for this platform (macOS x86_64)
         id: filter-packages
@@ -103,39 +100,7 @@ jobs:
 
       - name: Create failure tracking artifact
         if: always()
-        run: |
-          # Extract failed package names from all failure files
-          FAILED_PACKAGES="[]"
-
-          if [ -f build-failures.txt ] && [ -s build-failures.txt ]; then
-            FAILED=$(cat build-failures.txt | sed 's/^ *//' | jq -R . | jq -s -c .)
-            FAILED_PACKAGES=$(echo "$FAILED_PACKAGES" | jq -c ". += $FAILED")
-          fi
-
-          if [ -f build-failures-timeout.txt ] && [ -s build-failures-timeout.txt ]; then
-            FAILED=$(cat build-failures-timeout.txt | sed 's/^ *//' | jq -R . | jq -s -c .)
-            FAILED_PACKAGES=$(echo "$FAILED_PACKAGES" | jq -c ". += $FAILED")
-          fi
-
-          if [ -f build-failures-error.txt ] && [ -s build-failures-error.txt ]; then
-            FAILED=$(cat build-failures-error.txt | sed 's/^ *//' | jq -R . | jq -s -c .)
-            FAILED_PACKAGES=$(echo "$FAILED_PACKAGES" | jq -c ". += $FAILED")
-          fi
-
-          # Deduplicate and sort
-          FAILED_PACKAGES=$(echo "$FAILED_PACKAGES" | jq -c 'unique | sort')
-
-          # Create tracking file
-          cat > failure-tracking.json <<EOF
-          {
-            "platform": "macos-x86_64",
-            "batch_id": "${{ matrix.batch.id }}",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "failed_packages": $FAILED_PACKAGES
-          }
-          EOF
-
-          cat failure-tracking.json
+        run: .github/scripts/create-failure-tracking.sh "macos-x86_64" "${{ matrix.batch.id }}"
 
       - name: Upload failure tracking
         if: always()

@@ -86,6 +86,12 @@ jobs:
         run: |
           echo "🔐 Verifying artifact checksums..."
 
+          # Debug: Show what files we have before verification
+          echo "📋 Files before verification:"
+          find current-artifacts -type f -name '*.tar.gz' -o -name '*.sha256' | sort | while read -r f; do
+            echo "   - $(basename "$f")"
+          done
+
           VERIFIED=0
           FAILED=0
           CORRUPTED_FILES=$(mktemp)
@@ -102,7 +108,7 @@ jobs:
                 rm -f "$tarball" "${tarball}.sha256"
               fi
             else
-              echo "⚠️  No checksum file for $(basename "$tarball")"
+              echo "⚠️  No checksum file for $(basename "$tarball") - keeping tarball"
             fi
           done
 
@@ -115,6 +121,12 @@ jobs:
           if [ "$FAILED" -gt 0 ]; then
             echo "⚠️  Warning: $FAILED corrupted artifacts removed"
           fi
+
+          # Debug: Show what files we have after verification
+          echo "📋 Files after verification:"
+          find current-artifacts -type f \( -name '*.tar.gz' -o -name '*.sha256' -o -name '*.sha512' \) | sort | while read -r f; do
+            echo "   - $(basename "$f")"
+          done
 
       - name: Sign artifacts with Cosign (Sigstore)
         run: .github/scripts/sign-with-cosign.sh current-artifacts

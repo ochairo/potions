@@ -39,7 +39,7 @@ while IFS= read -r artifact; do
   if COSIGN_EXPERIMENTAL=1 cosign sign-blob "$artifact" \
     --output-signature="${artifact}.sig" \
     --output-certificate="${artifact}.pem" \
-    --yes 2>&1 | grep -q -v "WARNING"; then
+    --yes 2>&1; then
     echo "✅ Signed: $(basename "$artifact")"
     read -r signed failed < "$TEMP_STATS"
     echo "$((signed + 1)) $failed" > "$TEMP_STATS"
@@ -62,7 +62,7 @@ while IFS= read -r checksum; do
   if COSIGN_EXPERIMENTAL=1 cosign sign-blob "$checksum" \
     --output-signature="${checksum}.sig" \
     --output-certificate="${checksum}.pem" \
-    --yes 2>&1 | grep -q -v "WARNING"; then
+    --yes 2>&1; then
     echo "✅ Signed checksum: $(basename "$checksum")"
     read -r signed failed < "$TEMP_STATS"
     echo "$((signed + 1)) $failed" > "$TEMP_STATS"

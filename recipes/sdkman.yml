@@ -1,0 +1,49 @@
+name: sdkman
+version:
+  source: "static:5.18.2"
+build_type: custom
+description: The Software Development Kit Manager - Manage parallel versions of multiple SDKs
+homepage: https://sdkman.io/
+license: Apache-2.0
+
+download:
+  official_binary: false
+  download_url: "https://get.sdkman.io"
+  platforms:
+    darwin-x86_64:
+      os: "darwin"
+      arch: "x86_64"
+    darwin-arm64:
+      os: "darwin"
+      arch: "arm64"
+    linux-amd64:
+      os: "linux"
+      arch: "amd64"
+    linux-arm64:
+      os: "linux"
+      arch: "arm64"
+
+security:
+  verify_signature: false
+  scan_vulnerabilities: false
+
+build:
+  timeout_minutes: 5
+  custom_install: |
+    mkdir -p "$PREFIX/sdkman"
+    mkdir -p "$PREFIX/bin"
+
+    # Download and install SDKMAN
+    export SDKMAN_DIR="$PREFIX/sdkman"
+    curl -s "https://get.sdkman.io" | bash
+
+    # Create wrapper script
+    cat > "$PREFIX/bin/sdk" << 'WRAPPER_EOF'
+    #!/bin/bash
+    export SDKMAN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/sdkman"
+    [[ -s "${SDKMAN_DIR}/bin/sdkman-init.sh" ]] && source "${SDKMAN_DIR}/bin/sdkman-init.sh"
+    sdk "$@"
+    WRAPPER_EOF
+    chmod +x "$PREFIX/bin/sdk"
+
+dependencies: []

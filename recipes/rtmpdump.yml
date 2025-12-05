@@ -32,7 +32,7 @@ build:
     mkdir -p "$PREFIX/bin"
     mkdir -p "$PREFIX/lib"
     mkdir -p "$PREFIX/include/librtmp"
-    
+
     # Install binaries
     for bin in rtmpdump rtmpgw rtmpsrv rtmpsuck; do
       if [ -f "$bin" ]; then
@@ -40,12 +40,12 @@ build:
         chmod +x "$PREFIX/bin/$bin"
       fi
     done
-    
+
     # Install library if it exists
     if [ -f "librtmp/librtmp.a" ]; then
       cp librtmp/librtmp.a "$PREFIX/lib/"
     fi
-    
+
     # Install headers if they exist
     if [ -d "librtmp" ]; then
       cp librtmp/*.h "$PREFIX/include/librtmp/" 2>/dev/null || true

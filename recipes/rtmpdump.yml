@@ -2,7 +2,7 @@ name: rtmpdump
 version:
   source: "url:https://rtmpdump.mplayerhq.hu/download/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "[0-9]+"
+  extract_pattern: "rtmpdump-([0-9]+\\.[0-9]+[a-z]?)\\.tar\\.gz"
   cleanup: ""
 
 build_type: make

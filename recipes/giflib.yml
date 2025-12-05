@@ -9,7 +9,7 @@ build_type: make
 description: "Library for reading and writing GIF images"
 
 download:
-  download_url: "https://sourceforge.net/projects/giflib/files/giflib-{version}.tar.gz"
+  download_url: "https://sourceforge.net/projects/giflib/files/giflib-{version}.tar.gz/download"
   platforms:
     darwin-x86_64:
     darwin-arm64:

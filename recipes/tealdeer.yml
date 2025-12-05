@@ -16,13 +16,13 @@ download:
       arch: "x86_64"
     darwin-arm64:
       os: "macos"
-      arch: "arm64"
+      arch: "aarch64"
     linux-amd64:
       os: "linux"
-      arch: "x86_64"
+      arch: "x86_64-musl"
     linux-arm64:
       os: "linux"
-      arch: "arm64"
+      arch: "aarch64-musl"
 
 security:
   verify_signature: false

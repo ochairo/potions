@@ -23,7 +23,7 @@ jobs:
     permissions:
       contents: write
     env:
-      GO_VERSION: "1.25"
+      GO_VERSION: "1.25.5"
     steps:
       - name: Checkout repository
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "!startsWith(github.event.head_commit.message, 'chore:')"
     env:
-      GO_VERSION: "1.25"
+      GO_VERSION: "1.25.5"
     permissions:
       security-events: write
       actions: read
@@ -98,7 +98,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "!startsWith(github.event.head_commit.message, 'chore:')" # Wait for CodeQL to reduce parallel API calls
     env:
-      GO_VERSION: "1.25"
+      GO_VERSION: "1.25.5"
     steps:
       - name: Checkout repository
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5
@@ -135,7 +135,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "!startsWith(github.event.head_commit.message, 'chore:')" # Sequential execution to reduce API load
     env:
-      GO_VERSION: "1.25"
+      GO_VERSION: "1.25.5"
     steps:
       - name: Checkout repository
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5
@@ -181,7 +181,7 @@ jobs:
     name: Go Dependency Review
     runs-on: ubuntu-latest
     env:
-      GO_VERSION: "1.25"
+      GO_VERSION: "1.25.5"
     if: "github.event_name == 'pull_request' && !startsWith(github.event.head_commit.message, 'chore:')"
     steps:
       - name: Checkout repository
@@ -205,7 +205,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "!startsWith(github.event.head_commit.message, 'chore:')" # Sequential execution to reduce API load
     env:
-      GO_VERSION: "1.25"
+      GO_VERSION: "1.25.5"
     steps:
       - name: Checkout repository
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v5

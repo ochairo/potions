@@ -24,6 +24,10 @@ configure:
   script: |
     # Run autogen if needed
     if [ ! -f "configure" ] && [ -f "autogen.sh" ]; then
+      # On macOS, ensure Homebrew libtool is in PATH
+      if [ "$(uname)" = "Darwin" ] && [ -d "/opt/homebrew/bin" ]; then
+        export PATH="/opt/homebrew/bin:$PATH"
+      fi
       ./autogen.sh
     fi
 

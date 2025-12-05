@@ -3,6 +3,7 @@ version:
   source: "github-tag:libevent/libevent"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
   extract_pattern: 'release-([0-9]+\.[0-9]+\.[0-9]+)-stable'
+  cleanup: "s/release-//;s/-stable//"
 build_type: custom
 description: "Event notification library"
 

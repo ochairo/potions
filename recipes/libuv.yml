@@ -4,7 +4,7 @@ version:
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
   extract_pattern: 'v[0-9]+\.[0-9]+\.[0-9]+'
   cleanup: "v:"
-build_type: custom
+build_type: cmake
 description: "Multi-platform asynchronous I/O library"
 
 download:
@@ -20,29 +20,7 @@ security:
   verify_signature: false
   scan_vulnerabilities: true
 
-configure:
-  script: |
-    # Run autogen if needed
-    if [ ! -f "configure" ] && [ -f "autogen.sh" ]; then
-      # On macOS, ensure Homebrew libtool is in PATH
-      if [ "$(uname)" = "Darwin" ] && [ -d "/opt/homebrew/bin" ]; then
-        export PATH="/opt/homebrew/bin:$PATH"
-      fi
-      ./autogen.sh
-    fi
-
-    ./configure --prefix="$PREFIX" \
-      --disable-dependency-tracking
-
 build:
   timeout_minutes: 10
-  out_of_tree: false
-  script: |
-    make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
-  custom_install: |
-    make install
 
-dependencies:
-  - libtool
-  - automake
-  - autoconf
+dependencies: []

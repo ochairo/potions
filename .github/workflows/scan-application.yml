@@ -35,8 +35,6 @@ jobs:
 
       - name: Submit Go dependencies
         uses: actions/go-dependency-submission@f35d5c9af13ce9cc32f7930b171e315e878f6921 # v2
-        with:
-          go-version: ${{ env.GO_VERSION }}
 
   codeql:
     name: CodeQL Security Analysis (Go)

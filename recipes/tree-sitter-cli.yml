@@ -39,9 +39,11 @@ configure:
 build:
   timeout_minutes: 5
   custom_build: |
-    gunzip tree-sitter-*.gz && chmod +x tree-sitter-*
+    # File is already gunzipped by downloader, just make executable
+    chmod +x tree-sitter-*
   custom_install: |
     mkdir -p "$PREFIX/bin"
-    mv tree-sitter-* "$PREFIX/bin/tree-sitter"
+    cp tree-sitter-* "$PREFIX/bin/tree-sitter"
+    chmod +x "$PREFIX/bin/tree-sitter"
 
 dependencies: []

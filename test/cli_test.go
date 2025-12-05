@@ -815,7 +815,7 @@ func TestCLI_Release(t *testing.T) {
 				"--recipes", recipesDir,
 				"--dry-run",
 			},
-			wantErr: false, // Now handles existing releases gracefully (skips them)
+			wantErr: true, // Expects validation error: only 1 platform built but recipe requires minimum 2 of 4
 		},
 		{
 			name: "release with custom owner/repo",

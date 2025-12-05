@@ -13,7 +13,7 @@ Pre-compiled binaries for macOS and Linux, automatically built and signed.
 [![License](https://img.shields.io/github/license/ochairo/potions)](https://github.com/ochairo/potions/blob/main/LICENSE)
 
 > [!WARNING]
-> **🚧 Early Development
+> **🚧 Early Development**
 >
 > This project is in active development and should be considered **experimental**. Features may change, break, or be removed without notice.
 >

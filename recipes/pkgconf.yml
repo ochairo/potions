@@ -2,8 +2,8 @@ name: pkgconf
 version:
   source: "url:https://distfiles.dereferenced.org/pkgconf/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "pkgconf-[0-9]+\\.[0-9]+\\.[0-9]+"
-  cleanup: "pkgconf-:.tar.xz"
+  extract_pattern: "pkgconf-([0-9]+\\.[0-9]+\\.[0-9]+)"
+  cleanup: "s/pkgconf-//;s/.tar.xz//"
 
 build_type: gnu_autotools
 description: "Package compiler and linker metadata toolkit"

@@ -33,16 +33,16 @@ configure:
 build:
   custom_install: |
     mkdir -p $PREFIX/bin
-    
+
     # Find k6 binary (it may be in a subdirectory)
     K6_BIN=$(find . -name k6 -type f | head -1)
-    
+
     if [ -z "$K6_BIN" ]; then
       echo "Error: k6 binary not found" >&2
       echo "Contents of current directory:" >&2
       find . -type f >&2
       exit 1
     fi
-    
+
     cp "$K6_BIN" $PREFIX/bin/k6
     chmod +x $PREFIX/bin/k6

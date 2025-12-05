@@ -8,7 +8,7 @@ description: "Web-based interactive development environment for notebooks"
 
 download:
   official_binary: false
-  download_url: "skip"  # Installed via pip, no tarball download needed
+  download_url: "skip" # Installed via pip, no tarball download needed
   platforms:
     darwin-x86_64: {}
     darwin-arm64: {}

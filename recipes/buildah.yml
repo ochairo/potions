@@ -23,7 +23,7 @@ configure:
     export GOCACHE="$PWD/.cache/go-build"
     export GOMODCACHE="$PWD/.cache/go-mod"
     mkdir -p "$GOCACHE" "$GOMODCACHE"
-    
+
     # Allow Go to download required toolchain version
     export GOTOOLCHAIN=auto
 

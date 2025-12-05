@@ -9,7 +9,7 @@ on:
       - "internal/**"
       - "go.mod"
       - "go.sum"
-      - ".github/workflows/test-cli.yml"
+      - ".github/workflows/tests-cli.yml"
   pull_request:
     branches: [main, develop]
     paths:
@@ -18,7 +18,7 @@ on:
       - "internal/**"
       - "go.mod"
       - "go.sum"
-      - ".github/workflows/test-cli.yml"
+      - ".github/workflows/tests-cli.yml"
   workflow_dispatch:
 
 permissions:

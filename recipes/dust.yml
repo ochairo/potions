@@ -14,9 +14,6 @@ download:
     darwin-x86_64:
       os: "apple-darwin"
       arch: "x86_64"
-    darwin-arm64:
-      os: "apple-darwin"
-      arch: "aarch64"
     linux-amd64:
       os: "unknown-linux-musl"
       arch: "x86_64"

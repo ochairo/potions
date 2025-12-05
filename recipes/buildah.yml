@@ -23,6 +23,9 @@ configure:
     export GOCACHE="$PWD/.cache/go-build"
     export GOMODCACHE="$PWD/.cache/go-mod"
     mkdir -p "$GOCACHE" "$GOMODCACHE"
+    
+    # Allow Go to download required toolchain version
+    export GOTOOLCHAIN=auto
 
 build:
   timeout_minutes: 5
@@ -30,6 +33,7 @@ build:
   custom_install: |
     export GOCACHE="$PWD/.cache/go-build"
     export GOMODCACHE="$PWD/.cache/go-mod"
+    export GOTOOLCHAIN=auto
     make bin/buildah
     mkdir -p $PREFIX/bin
     cp bin/buildah $PREFIX/bin/

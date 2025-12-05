@@ -2,7 +2,7 @@ name: p11-kit
 version:
   source: "github-release:p11-glue/p11-kit"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "[0-9]+\\.[0-9]+"
+  extract_pattern: "[0-9]+\\.[0-9]+\\.[0-9]+"
   cleanup: ""
 
 build_type: custom

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Go 1.24+** from [go.dev](https://go.dev/dl/)
+- **Go 1.25+** from [go.dev](https://go.dev/dl/)
 - **GitHub Token** with `repo` scope
 
   ```bash

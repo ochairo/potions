@@ -2,8 +2,8 @@ name: isl
 version:
   source: "url:https://libisl.sourceforge.io/"
   exclude_patterns: "(alpha|beta|rc|dev|preview|pre|snapshot|nightly|test|unstable|canary|next|edge|weekly|daily)"
-  extract_pattern: "isl-[0-9]+\\.[0-9]+(\\.[0-9]+)?"
-  cleanup: "isl-:.tar.xz"
+  extract_pattern: "isl-([0-9]+\\.[0-9]+(?:\\.[0-9]+)?)"
+  cleanup: "isl-:"
 
 build_type: gnu_autotools
 description: "Integer Set Library for manipulating sets and relations of integer points"

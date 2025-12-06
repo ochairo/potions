@@ -9,7 +9,7 @@ build_type: custom
 description: "Low-level core library that forms the basis of GTK+"
 
 download:
-  download_url: "https://download.gnome.org/sources/glib/{version}/glib-{version}.tar.xz"
+  download_url: "https://download.gnome.org/sources/glib/{version}/glib-{version}.0.tar.xz"
   platforms:
     darwin-x86_64:
     darwin-arm64:

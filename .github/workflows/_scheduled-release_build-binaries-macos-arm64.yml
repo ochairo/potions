@@ -15,7 +15,7 @@ jobs:
   build-binaries-macos-arm64:
     name: Build Binaries (macOS ARM64)
     runs-on: macos-latest
-    timeout-minutes: 360
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       max-parallel: 10

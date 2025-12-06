@@ -37,7 +37,7 @@ jobs:
   detect-updates:
     name: Detect Package Updates
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     outputs:
       packages: ${{ steps.monitor.outputs.packages }}
       batches: ${{ steps.split-packages.outputs.batches }}

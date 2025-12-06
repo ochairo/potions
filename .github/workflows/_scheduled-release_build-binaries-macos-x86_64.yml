@@ -15,7 +15,7 @@ jobs:
   build-binaries-macos-x86_64:
     name: Build Binaries (macOS Intel)
     runs-on: macos-13
-    timeout-minutes: 360
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       max-parallel: 10

@@ -10,23 +10,23 @@ description: "Pluggable multi-language version manager"
 official_binary: true
 
 download:
-  download_url: "https://github.com/moonrepo/proto/releases/download/v{version}/proto_{os}-{arch}.{suffix}"
+  download_url: "https://github.com/moonrepo/proto/releases/download/v{version}/proto_cli-{arch}-{target}.{suffix}"
   platforms:
     darwin-x86_64:
-      os: "macos"
       arch: "x86_64"
+      target: "apple-darwin"
       suffix: "tar.xz"
     darwin-arm64:
-      os: "macos"
       arch: "aarch64"
+      target: "apple-darwin"
       suffix: "tar.xz"
     linux-amd64:
-      os: "linux"
       arch: "x86_64"
+      target: "unknown-linux-gnu"
       suffix: "tar.xz"
     linux-arm64:
-      os: "linux"
       arch: "aarch64"
+      target: "unknown-linux-gnu"
       suffix: "tar.xz"
 
 security:

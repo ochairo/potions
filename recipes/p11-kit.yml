@@ -32,5 +32,6 @@ build:
     ninja -C build install
 
 dependencies:
+  - meson
   - libtasn1
   - libffi

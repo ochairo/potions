@@ -9,7 +9,7 @@ build_type: gnu_autotools
 description: "Integer Set Library for manipulating sets and relations of integer points"
 
 download:
-  download_url: "https://libisl.sourceforge.io/isl-{version}.tar.xz"
+  download_url: "https://downloads.sourceforge.net/project/libisl/isl-{version}.tar.xz"
   platforms:
     darwin-x86_64:
     darwin-arm64:

@@ -39,8 +39,10 @@ build:
   out_of_tree: false
   custom_install: |
     mkdir -p "$PREFIX/bin"
-    chmod +x loki-linux-amd64
-    cp -v loki-linux-amd64 "$PREFIX/bin/loki"
+    # Find the loki binary (name varies by platform)
+    LOKI_BIN=$(find . -maxdepth 1 -type f -name "loki-*" ! -name "*.zip" | head -1)
+    chmod +x "$LOKI_BIN"
+    cp -v "$LOKI_BIN" "$PREFIX/bin/loki"
 
 dependencies:
   - unzip

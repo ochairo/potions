@@ -9,7 +9,7 @@ build_type: gnu_autotools
 description: "XSLT C library"
 
 download:
-  download_url: "https://download.gnome.org/sources/libxslt/{version}/libxslt-{version}.tar.xz"
+  download_url: "https://download.gnome.org/sources/libxslt/{version}/libxslt-{version}.45.tar.xz"
   platforms:
     darwin-x86_64:
     darwin-arm64:

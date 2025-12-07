@@ -28,7 +28,8 @@ configure:
 
     ./configure --prefix="$PREFIX" \
       --disable-dependency-tracking \
-      --disable-asm
+      --disable-asm \
+      --with-libgpg-error-prefix="$PREFIX"
 
 build:
   timeout_minutes: 15

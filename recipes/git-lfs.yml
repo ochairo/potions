@@ -9,20 +9,24 @@ description: "Git extension for versioning large files"
 
 download:
   official_binary: true
-  download_url: "https://github.com/git-lfs/git-lfs/releases/download/v{version}/git-lfs-{os}-{arch}-v{version}.tar.gz"
+  download_url: "https://github.com/git-lfs/git-lfs/releases/download/v{version}/git-lfs-{os}-{arch}-v{version}.{suffix}"
   platforms:
     darwin-x86_64:
       os: "darwin"
       arch: "amd64"
+      suffix: "zip"
     darwin-arm64:
       os: "darwin"
       arch: "arm64"
+      suffix: "zip"
     linux-amd64:
       os: "linux"
       arch: "amd64"
+      suffix: "tar.gz"
     linux-arm64:
       os: "linux"
       arch: "arm64"
+      suffix: "tar.gz"
 
 security:
   verify_signature: false

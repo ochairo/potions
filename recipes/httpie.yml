@@ -8,8 +8,7 @@ description: "Modern HTTP client for the CLI"
 
 download:
   official_binary: false
-  # HTTPie distributes primarily via pip/package managers
-  # We'll build from source or use pipx
+  download_url: "https://github.com/httpie/cli/archive/refs/tags/{version}.tar.gz"
   platforms:
     darwin-x86_64: {}
     darwin-arm64: {}

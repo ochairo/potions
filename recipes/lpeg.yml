@@ -26,8 +26,8 @@ configure:
 build:
   timeout_minutes: 10
   custom_build: |
-    # Point to Lua headers from dependency (Makefile expects LUADIR with headers)
-    make LUADIR="${PREFIX}/include"
+    # Point to Lua headers from dependency
+    make LUADIR="${PREFIX}/include" CFLAGS="-I${PREFIX}/include"
   custom_install: |
     mkdir -p "$PREFIX/lib/lua/5.4"
     cp lpeg.so "$PREFIX/lib/lua/5.4/"

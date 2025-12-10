@@ -12,7 +12,6 @@ Pre-compiled binaries for macOS and Linux, automatically built and signed.
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ochairo/potions/badge)](https://scorecard.dev/viewer/?uri=github.com/ochairo/potions)
 [![License](https://img.shields.io/github/license/ochairo/potions)](https://github.com/ochairo/potions/blob/main/LICENSE)
 
-> [!WARNING]
 > **🚧 Early Development**
 >
 > This project is in active development and should be considered **experimental**. Features may change, break, or be removed without notice.

@@ -89,7 +89,7 @@ jobs:
 
       - name: Upload failure tracking
         if: always()
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v5
         with:
           name: failure-tracking-linux-arm64-batch-${{ matrix.batch.id }}
           path: failure-tracking.json
@@ -97,7 +97,7 @@ jobs:
 
       - name: Upload build failures report
         if: always()
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v5
         with:
           name: linux-arm64-batch-${{ matrix.batch.id }}-failures
           path: |
@@ -130,7 +130,7 @@ jobs:
 
       - name: Upload artifacts
         if: success() && steps.check-artifacts.outputs.has-artifacts == 'true'
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v5
         with:
           name: linux-arm64-batch-${{ matrix.batch.id }}-builds
           path: dist/
@@ -139,7 +139,7 @@ jobs:
 
       - name: Upload build completion marker
         if: success() && steps.check-artifacts.outputs.has-artifacts == 'true'
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v5
         with:
           name: linux-arm64-batch-${{ matrix.batch.id }}-complete
           path: build-successes.txt

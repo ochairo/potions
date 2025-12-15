@@ -56,7 +56,7 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@cf1bb45a277cb3c205638b2cd5c984db1c46a412 # v4
+        uses: github/codeql-action/init@1b168cd39490f61582a9beae412bb7057a6b2c4e # v4
         with:
           languages: go
           queries: security-and-quality
@@ -66,7 +66,7 @@ jobs:
           go build -v ./cmd/potions
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@cf1bb45a277cb3c205638b2cd5c984db1c46a412 # v4
+        uses: github/codeql-action/analyze@1b168cd39490f61582a9beae412bb7057a6b2c4e # v4
         continue-on-error: true # Allow workflow to continue if API rate limit is hit
         with:
           category: go-application
@@ -254,7 +254,7 @@ jobs:
           publish_results: true
 
       - name: Upload SARIF Results
-        uses: github/codeql-action/upload-sarif@cf1bb45a277cb3c205638b2cd5c984db1c46a412 # v4
+        uses: github/codeql-action/upload-sarif@1b168cd39490f61582a9beae412bb7057a6b2c4e # v4
         continue-on-error: true # Allow workflow to continue if scorecard failed
         with:
           sarif_file: results.sarif
